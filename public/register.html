@@ -108,30 +108,38 @@ let selectedCells = []; // indices selected
 // ─── LOAD CAPTCHA ─────────────────────────────
 async function loadCaptcha() {
   selectedCells = [];
+  captchaToken = null;
+  captchaAnswer = null;
   document.getElementById('captcha-hint').textContent = 'Klik semua emoji yang cocok';
+  document.getElementById('captcha-hint').style.color = '';
   document.getElementById('captcha-target-emoji').textContent = '...';
   document.getElementById('captcha-grid').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted);font-size:.82rem">Memuat...</div>';
 
-  const res = await fetch('/api/auth/captcha');
-  const data = await res.json();
-  if (!data.grid) return;
+  try {
+    const res = await fetch('/api/auth/captcha');
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    const data = await res.json();
+    if (!data.grid || !data.captchaToken) throw new Error('Data captcha tidak valid');
 
-  captchaToken = data.captchaToken;
-  captchaAnswer = null; // answer will be the selected targetId
-  document.getElementById('captcha-target-emoji').textContent = data.targetSymbol;
+    captchaToken = data.captchaToken;
+    document.getElementById('captcha-target-emoji').textContent = data.targetSymbol;
 
-  // Store target in dataset
-  const grid = document.getElementById('captcha-grid');
-  grid.innerHTML = '';
-  data.grid.forEach((item, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'captcha-cell';
-    cell.textContent = item.symbol;
-    cell.dataset.id = item.id;
-    cell.dataset.idx = i;
-    cell.addEventListener('click', () => toggleCell(cell, item.id));
-    grid.appendChild(cell);
-  });
+    const grid = document.getElementById('captcha-grid');
+    grid.innerHTML = '';
+    data.grid.forEach((item, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'captcha-cell';
+      cell.textContent = item.symbol;
+      cell.dataset.id = item.id;
+      cell.dataset.idx = i;
+      cell.addEventListener('click', () => toggleCell(cell, item.id));
+      grid.appendChild(cell);
+    });
+  } catch (e) {
+    document.getElementById('captcha-grid').innerHTML = '<div style="text-align:center;padding:10px;color:var(--danger);font-size:.82rem">Gagal memuat captcha. Klik refresh.</div>';
+    document.getElementById('captcha-target-emoji').textContent = '?';
+    console.error('Captcha load error:', e);
+  }
 }
 
 function toggleCell(cell, id) {
@@ -184,42 +192,50 @@ document.getElementById('password').addEventListener('input', function() {
 
 // ─── REGISTER ─────────────────────────────────
 document.getElementById('btn-register').addEventListener('click', async () => {
-  const username = document.getElementById('username').value.trim();
+  const username = document.getElementById('username').value.trim().toLowerCase();
   const password = document.getElementById('password').value;
   const password2 = document.getElementById('password2').value;
   const terms = document.getElementById('terms').checked;
 
-  if (!username || !password || !password2) return toast('Semua field wajib diisi.', 'error');
-  if (password !== password2) return toast('Password tidak cocok.', 'error');
+  if (!username) return toast('Username wajib diisi.', 'error');
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) return toast('Username: 3-20 karakter, huruf kecil/angka/underscore.', 'error');
+  if (!password) return toast('Password wajib diisi.', 'error');
+  if (password.length < 6) return toast('Password minimal 6 karakter.', 'error');
+  if (password !== password2) return toast('Konfirmasi password tidak cocok.', 'error');
   if (!terms) return toast('Centang persetujuan syarat penggunaan dulu.', 'warning');
-  if (!captchaToken) return toast('Muat ulang captcha dulu.', 'error');
+  if (!captchaToken) return toast('Captcha belum dimuat. Klik tombol Refresh.', 'error');
   if (!captchaAnswer) return toast('Pilih semua emoji yang sama dengan gambar di atas.', 'warning');
 
   const btn = document.getElementById('btn-register');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Mendaftar...';
 
-  const r = await apiFetch('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ username, password, captchaToken, captchaAnswer })
-  });
+  try {
+    const r = await apiFetch('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, captchaToken, captchaAnswer })
+    });
 
-  btn.disabled = false;
-  btn.textContent = 'Daftar Sekarang';
+    btn.disabled = false;
+    btn.textContent = 'Daftar Sekarang';
 
-  if (!r) return;
-  if (r.ok) {
-    setToken(r.data.token);
-    setUser({ username: r.data.username, role: r.data.role });
-    toast('Akun berhasil dibuat! Selamat datang.', 'success');
-    setTimeout(() => window.location.href = '/dashboard', 800);
-  } else {
-    toast(r.data.message || 'Gagal mendaftar.', 'error');
-    if (r.data.error === 'CAPTCHA_WRONG' || r.data.error === 'CAPTCHA_EXPIRED') {
-      // Mark wrong
-      document.querySelectorAll('.captcha-cell.selected').forEach(c => c.classList.add('wrong'));
-      setTimeout(loadCaptcha, 800);
+    if (!r) return;
+    if (r.ok) {
+      setToken(r.data.token);
+      setUser({ username: r.data.username, role: r.data.role });
+      toast('Akun berhasil dibuat! Selamat datang.', 'success');
+      setTimeout(() => window.location.href = '/dashboard', 800);
+    } else {
+      toast(r.data.message || 'Gagal mendaftar.', 'error');
+      if (r.data.error === 'CAPTCHA_WRONG' || r.data.error === 'CAPTCHA_EXPIRED') {
+        document.querySelectorAll('.captcha-cell.selected').forEach(c => c.classList.add('wrong'));
+        setTimeout(loadCaptcha, 700);
+      }
     }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = 'Daftar Sekarang';
+    toast('Koneksi gagal. Coba lagi.', 'error');
   }
 });
 
