@@ -70,9 +70,9 @@
       <div class="captcha-box">
         <div class="captcha-label">Verifikasi Anti-Bot</div>
         <div class="captcha-target">
-          <span>Pilih semua emoji</span>
+          <span>Pilih SEMUA emoji</span>
           <span class="emoji-big" id="captcha-target-emoji">...</span>
-          <span>yang sama</span>
+          <span>yang ada di grid</span>
           <button class="captcha-refresh" id="captcha-refresh" type="button">&#8635; Refresh</button>
         </div>
         <div class="captcha-grid" id="captcha-grid"></div>
@@ -146,13 +146,17 @@ function toggleCell(cell, id) {
   const count = selectedCells.length;
   document.getElementById('captcha-hint').textContent = count > 0 ? `${count} emoji dipilih` : 'Klik semua emoji yang cocok';
 
-  // Detect the answer: if all selected cells have same id, set as answer
+  // Valid answer: all selected cells share same id, and at least 2 selected
   const cells = document.querySelectorAll('.captcha-cell.selected');
   const ids = [...cells].map(c => c.dataset.id);
-  if (ids.length > 0 && ids.every(i => i === ids[0])) {
+  if (ids.length >= 2 && ids.every(i => i === ids[0])) {
     captchaAnswer = ids[0];
+    document.getElementById('captcha-hint').textContent = '✓ Pilihan cocok! Lanjutkan daftar.';
+    document.getElementById('captcha-hint').style.color = 'var(--success)';
   } else {
     captchaAnswer = null;
+    document.getElementById('captcha-hint').style.color = '';
+    document.getElementById('captcha-hint').textContent = count > 0 ? `${count} emoji dipilih — pilih semua yang sama` : 'Klik semua emoji yang cocok';
   }
 }
 
@@ -189,7 +193,7 @@ document.getElementById('btn-register').addEventListener('click', async () => {
   if (password !== password2) return toast('Password tidak cocok.', 'error');
   if (!terms) return toast('Centang persetujuan syarat penggunaan dulu.', 'warning');
   if (!captchaToken) return toast('Muat ulang captcha dulu.', 'error');
-  if (!captchaAnswer || selectedCells.length < 2) return toast('Pilih semua emoji yang sama dengan gambar di atas.', 'warning');
+  if (!captchaAnswer) return toast('Pilih semua emoji yang sama dengan gambar di atas.', 'warning');
 
   const btn = document.getElementById('btn-register');
   btn.disabled = true;
