@@ -17,8 +17,8 @@ const EMOJI_PAIRS = [
 function generateCaptcha() {
   const shuffled = [...EMOJI_PAIRS].sort(() => Math.random() - 0.5).slice(0, 6);
   const target = shuffled[Math.floor(Math.random() * shuffled.length)];
-  // Grid: 6 unique emojis + 1 duplicate of target = 7, shuffle to 8 positions
-  const grid = [...shuffled, { ...target }].sort(() => Math.random() - 0.5);
+  // Grid: 6 unique emojis + 2 duplicates of target = 8 items, clean 4x2 grid
+  const grid = [...shuffled, { ...target }, { ...target }].sort(() => Math.random() - 0.5);
   return { grid, targetId: target.id, targetSymbol: target.symbol };
 }
 
@@ -48,10 +48,11 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'MISSING_FIELDS', message: 'Semua field wajib diisi.' });
     }
 
-    username = sanitize(username.trim().toLowerCase());
+    username = username.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,20}$/.test(username)) {
       return res.status(400).json({ error: 'INVALID_USERNAME', message: 'Username hanya boleh huruf kecil, angka, underscore. 3-20 karakter.' });
     }
+    username = sanitize(username);
     if (password.length < 6 || password.length > 64) {
       return res.status(400).json({ error: 'INVALID_PASSWORD', message: 'Password minimal 6 karakter, maksimal 64.' });
     }
