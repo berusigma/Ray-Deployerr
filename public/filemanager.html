@@ -188,7 +188,6 @@ async function init() {
 
   await refreshAll();
   setupDrop();
-  setupEvents();
 }
 
 async function refreshAll() {
@@ -414,7 +413,7 @@ async function ctxEdit() {
     title: `Edit: ${contextTarget.name}`,
     body: `<textarea class="editor-area" id="editor-content">${escapeHtml(r.data.content)}</textarea>`,
     confirmText: 'Simpan',
-    size: 'style="max-width:700px"',
+    wide: true,
     onConfirm: async (_, closeM) => {
       const content = document.getElementById('editor-content').value;
       const sr = await apiFetch(`/files/edit/${SERVER_ID}`, { method:'PUT', body: JSON.stringify({ filePath: contextTarget.path, content }) });
@@ -614,8 +613,38 @@ function getFileIconChar(mimeType, name) {
   return map[ext] || { char: ext.toUpperCase().substring(0,3) || 'BIN', color:'#7eb8d4', bg:'rgba(126,184,212,.15)' };
 }
 
+function showModal({ title, body, confirmText = 'OK', confirmClass = 'btn-primary', onConfirm, cancelText = 'Batal', wide = false }) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal" ${wide ? 'style="max-width:700px"' : ''}>
+      <div class="modal-header">
+        <div class="modal-title">${escapeHtml(title)}</div>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">${body}</div>
+      <div class="modal-footer">
+        ${cancelText ? `<button class="btn btn-ghost btn-cancel">${escapeHtml(cancelText)}</button>` : ''}
+        ${confirmText ? `<button class="btn ${confirmClass} btn-confirm">${escapeHtml(confirmText)}</button>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.querySelector('.modal-close')?.addEventListener('click', close);
+  overlay.querySelector('.btn-cancel')?.addEventListener('click', close);
+  overlay.querySelector('.btn-confirm')?.addEventListener('click', async () => {
+    if (onConfirm) await onConfirm(overlay, close);
+    else close();
+  });
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  return { overlay, close };
+}
+
+function confirmModal(title, msg, onYes, danger = false) {
+  return showModal({ title, body: `<p style="color:var(--muted)">${escapeHtml(msg)}</p>`, confirmText: 'Ya, lanjutkan', confirmClass: danger ? 'btn-danger' : 'btn-primary', onConfirm: async (_, close) => { await onYes(); close(); } });
+}
+
 function copySrvUrl() { copyText(`${BASE_URL}/s/${SERVER_NAME}/`); }
-const API = '/api';
 </script>
 </body>
 </html>
