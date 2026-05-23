@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>File Manager — Ray App</title>
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+body { overflow: hidden; }
+.fm-wrap { display:flex; height:calc(100vh - 62px); margin-top:62px; }
+
+/* Sidebar */
+.fm-sidebar { width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:relative;z-index:10; }
+.fm-sidebar-head { padding:14px 12px;border-bottom:1px solid var(--border); }
+.server-info-box { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px; }
+.server-info-name { font-weight:700;color:var(--wave);font-size:.9rem;display:flex;align-items:center;gap:6px; }
+.server-info-url { font-size:.7rem;color:var(--muted);font-family:monospace;margin-top:3px;cursor:pointer; }
+.server-info-url:hover { color:var(--accent); }
+.fm-storage-bar { margin-top:6px; }
+.fm-storage-label { font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:3px; }
+
+/* Tree */
+.fm-tree { flex:1;overflow-y:auto;padding:8px; }
+.tree-row { display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:.8rem;color:var(--muted);transition:background .12s;user-select:none;white-space:nowrap; }
+.tree-row:hover { background:var(--card);color:var(--text); }
+.tree-row.active { background:rgba(14,165,233,.12);color:var(--wave); }
+.tree-toggle { width:14px;text-align:center;font-size:.65rem;flex-shrink:0;transition:transform .15s; }
+.tree-toggle.open { transform:rotate(90deg); }
+.tree-fname { overflow:hidden;text-overflow:ellipsis; }
+.tree-children { padding-left:14px;border-left:1px solid var(--border);margin-left:14px; }
+
+/* Main area */
+.fm-main { flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0; }
+.fm-topbar { padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+.fm-breadcrumb { display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted);flex:1;min-width:100px;overflow:hidden; }
+.fm-breadcrumb span.crumb { cursor:pointer;padding:2px 6px;border-radius:5px;white-space:nowrap; }
+.fm-breadcrumb span.crumb:hover { background:var(--card);color:var(--text); }
+.fm-breadcrumb .sep { color:var(--subtle);font-size:.7rem; }
+.fm-actions { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
+
+/* Content */
+.fm-content { flex:1;overflow-y:auto;padding:14px; }
+.file-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px; }
+.file-item { background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:border-color .15s,transform .12s;position:relative;user-select:none; }
+.file-item:hover { border-color:var(--accent);transform:translateY(-1px); }
+.file-item.selected { border-color:var(--accent2);background:rgba(6,182,212,.08); }
+.fi-icon { width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:.75rem;font-weight:800;color:#fff; }
+.fi-name { font-size:.72rem;color:var(--text);word-break:break-all;line-height:1.3; }
+.fi-size { font-size:.63rem;color:var(--muted);margin-top:3px; }
+.fi-check { position:absolute;top:5px;right:5px;width:16px;height:16px;border:2px solid var(--border);border-radius:4px;background:var(--dark);transition:all .12s; }
+.file-item.selected .fi-check { background:var(--accent2);border-color:var(--accent2); }
+.file-item.selected .fi-check::after { content:'✓';color:#fff;font-size:.6rem;display:block;text-align:center;line-height:12px;font-weight:700; }
+.folder-item { background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25); }
+.folder-item:hover { border-color:var(--warning); }
+
+/* Drop zone */
+.drop-overlay { position:absolute;inset:0;background:rgba(14,165,233,.12);border:3px dashed var(--accent);border-radius:14px;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:50;font-size:1rem;color:var(--accent);font-weight:700; }
+.drop-overlay.active { display:flex; }
+
+/* Context menu */
+.ctx-menu { position:fixed;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:5px;z-index:2000;min-width:170px;box-shadow:var(--shadow);animation:scaleIn .12s; }
+.ctx-item { padding:8px 12px;border-radius:7px;font-size:.82rem;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--muted);transition:background .1s; }
+.ctx-item:hover { background:var(--surface);color:var(--text); }
+.ctx-item.danger { color:var(--danger); }
+.ctx-item.danger:hover { background:rgba(239,68,68,.1); }
+.ctx-sep { height:1px;background:var(--border);margin:3px 0; }
+.ctx-icon { width:16px;text-align:center;font-size:.85rem; }
+
+/* Editor modal */
+.editor-area { width:100%;height:320px;font-family:monospace;font-size:.82rem;resize:vertical;background:var(--dark);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px;line-height:1.6; }
+
+/* Status bar */
+.fm-statusbar { padding:5px 14px;border-top:1px solid var(--border);background:var(--surface);font-size:.72rem;color:var(--subtle);display:flex;gap:16px;align-items:center;flex-wrap:wrap; }
+
+/* Upload progress */
+.upload-progress-wrap { background:var(--surface);border-top:1px solid var(--border);padding:10px 14px;max-height:140px;overflow-y:auto; }
+.upload-row { display:flex;align-items:center;gap:10px;font-size:.78rem;margin-bottom:6px; }
+.upload-row .uf { flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text); }
+.upload-row .us { font-size:.7rem;flex-shrink:0; }
+.upload-row .prog { width:80px;flex-shrink:0; }
+
+@media(max-width:768px){
+  .fm-sidebar { position:fixed;top:62px;left:0;bottom:0;transform:translateX(-100%);transition:transform .3s;z-index:200; }
+  .fm-sidebar.open { transform:translateX(0); }
+  .fm-mob-toggle { display:flex; }
+  .file-grid { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); }
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar">
+  <a href="/" class="navbar-brand"><div class="logo-icon">~</div>Ray App</a>
+  <button id="fm-mob-btn" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;cursor:pointer;margin-left:auto;display:none">&#9776;</button>
+</nav>
+
+<div id="toast-container"></div>
+
+<div class="fm-wrap">
+  <!-- SIDEBAR -->
+  <div class="fm-sidebar" id="fm-sidebar">
+    <div class="fm-sidebar-head">
+      <div class="server-info-box">
+        <div class="server-info-name">&#127758; <span id="sb-server-name">...</span></div>
+        <div class="server-info-url" id="sb-server-url" onclick="copySrvUrl()">klik untuk salin URL</div>
+        <div class="fm-storage-bar">
+          <div class="fm-storage-label"><span>Storage</span><span id="sb-storage">0 B / 50 MB</span></div>
+          <div class="progress-bar"><div class="progress-fill" id="sb-prog" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <a href="/dashboard" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">&#8592; Dashboard</a>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh-tree" title="Refresh">&#8635;</button>
+      </div>
+    </div>
+    <div class="fm-tree" id="fm-tree"><div style="padding:12px;color:var(--muted);font-size:.8rem">Memuat...</div></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="fm-main" id="fm-main" style="position:relative">
+    <!-- Drop overlay -->
+    <div class="drop-overlay" id="drop-overlay">
+      <div style="font-size:2rem">&#8659;</div>
+      <div>Lepas file di sini untuk upload</div>
+    </div>
+
+    <!-- Topbar -->
+    <div class="fm-topbar">
+      <div class="fm-breadcrumb" id="fm-breadcrumb">
+        <span class="crumb" onclick="navTo('')">&#127968; root</span>
+      </div>
+      <div class="fm-actions">
+        <button class="btn btn-primary btn-sm" id="btn-upload" title="Upload File">&#8593; Upload</button>
+        <button class="btn btn-ghost btn-sm" id="btn-newfolder" title="Buat Folder">&#128193; Folder</button>
+        <button class="btn btn-ghost btn-sm" id="btn-download-all" title="Download Semua">&#8595; Semua</button>
+        <button class="btn btn-danger btn-sm" id="btn-delete-selected" style="display:none">&#128465; Hapus</button>
+      </div>
+    </div>
+
+    <!-- File Content -->
+    <div class="fm-content" id="fm-content">
+      <div class="empty-state"><div class="spinner" style="width:28px;height:28px"></div><div>Memuat...</div></div>
+    </div>
+
+    <!-- Upload progress -->
+    <div class="upload-progress-wrap" id="upload-progress" style="display:none"></div>
+
+    <!-- Status bar -->
+    <div class="fm-statusbar">
+      <span id="status-count">0 item</span>
+      <span id="status-selected" style="display:none;color:var(--accent)">0 dipilih</span>
+      <span id="status-path" style="margin-left:auto;font-family:monospace">/</span>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input -->
+<input type="file" id="file-input" multiple style="display:none" accept="*/*">
+
+<script src="/assets/js/utils.js"></script>
+<script>
+if (!requireLogin()) throw new Error();
+
+const params = new URLSearchParams(location.search);
+const SERVER_ID = params.get('server');
+const SERVER_NAME = params.get('name') || '';
+const BASE_URL = window.location.origin;
+
+if (!SERVER_ID) { toast('Server tidak ditemukan.','error'); setTimeout(()=>location.href='/dashboard',1500); }
+
+// ─── STATE ────────────────────────────────────
+let currentPath = '';
+let fileTree = [];
+let allFiles = [];
+let selected = new Set();
+let serverData = null;
+let contextTarget = null;
+
+// ─── INIT ─────────────────────────────────────
+async function init() {
+  document.getElementById('sb-server-name').textContent = SERVER_NAME;
+  const url = `${BASE_URL}/s/${SERVER_NAME}/`;
+  document.getElementById('sb-server-url').textContent = url;
+
+  // Mobile sidebar toggle
+  const mob = document.getElementById('fm-mob-btn');
+  if (window.innerWidth <= 768) mob.style.display = 'flex';
+  mob.addEventListener('click', () => document.getElementById('fm-sidebar').classList.toggle('open'));
+
+  await refreshAll();
+  setupDrop();
+  setupEvents();
+}
+
+async function refreshAll() {
+  await Promise.all([loadTree(), loadContent()]);
+}
+
+// ─── LOAD TREE ────────────────────────────────
+async function loadTree() {
+  const r = await apiFetch(`/servers/${SERVER_ID}/filetree`);
+  if (!r?.ok) return;
+  const { tree, totalSize } = r.data;
+  fileTree = tree;
+  serverData = { totalSize };
+
+  // Storage bar
+  const pct = Math.min(100, (totalSize / (50*1024*1024))*100).toFixed(1);
+  document.getElementById('sb-storage').textContent = `${fmtSize(totalSize)} / 50 MB`;
+  document.getElementById('sb-prog').style.width = pct + '%';
+  document.getElementById('sb-prog').style.background = pct > 85 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : '';
+
+  renderTree(tree.children, document.getElementById('fm-tree'), '');
+}
+
+function renderTree(nodes, container, parentPath) {
+  container.innerHTML = '';
+  if (!nodes || !nodes.length) {
+    container.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:.75rem;font-style:italic">Kosong</div>';
+    return;
+  }
+
+  // Folders first
+  const sorted = [...nodes].sort((a,b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  sorted.forEach(node => {
+    const div = document.createElement('div');
+    if (node.type === 'folder') {
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      childContainer.style.display = 'none';
+      let open = false;
+
+      const row = document.createElement('div');
+      row.className = 'tree-row';
+      row.innerHTML = `<span class="tree-toggle">&#9658;</span><span style="color:var(--warning)">&#128193;</span><span class="tree-fname">${escapeHtml(node.name)}</span>`;
+      row.addEventListener('click', () => {
+        open = !open;
+        row.querySelector('.tree-toggle').classList.toggle('open', open);
+        childContainer.style.display = open ? 'block' : 'none';
+        navTo(node.path || (parentPath ? parentPath+'/'+node.name : node.name));
+      });
+      div.appendChild(row);
+
+      if (node.children?.length) {
+        renderTree(node.children, childContainer, node.path);
+        div.appendChild(childContainer);
+      }
+    } else {
+      const row = document.createElement('div');
+      row.className = 'tree-row';
+      const ic = getFileIconChar(node.mimeType, node.name);
+      row.innerHTML = `<span style="width:14px"></span><span style="font-size:.7rem;color:${ic.color};font-weight:700">${ic.char}</span><span class="tree-fname">${escapeHtml(node.name)}</span>`;
+      row.addEventListener('click', () => navTo(node.path));
+      div.appendChild(row);
+    }
+    container.appendChild(div);
+  });
+}
+
+// ─── LOAD CONTENT ─────────────────────────────
+async function loadContent() {
+  const r = await apiFetch(`/servers/${SERVER_ID}/filetree`);
+  if (!r?.ok) return;
+  allFiles = flattenTree(r.data.tree);
+  renderContent(currentPath);
+}
+
+function flattenTree(node, result = []) {
+  if (!node.children) return result;
+  node.children.forEach(child => {
+    result.push(child);
+    if (child.type === 'folder') flattenTree(child, result);
+  });
+  return result;
+}
+
+function renderContent(path) {
+  currentPath = path;
+  selected.clear();
+  updateSelected();
+
+  // Breadcrumb
+  const bc = document.getElementById('fm-breadcrumb');
+  const parts = path ? path.split('/').filter(Boolean) : [];
+  bc.innerHTML = `<span class="crumb" onclick="navTo('')">&#127968; root</span>`;
+  let built = '';
+  parts.forEach((p, i) => {
+    built += (built ? '/' : '') + p;
+    const cp = built;
+    bc.innerHTML += `<span class="sep">&#9656;</span><span class="crumb" onclick="navTo('${escapeHtml(cp)}')">${escapeHtml(p)}</span>`;
+  });
+
+  // Get items in this path
+  const items = allFiles.filter(f => {
+    if (!path) {
+      // root level: no slash in path
+      return !f.path.includes('/') || (f.type === 'folder' && f.path.split('/').length === 1);
+    }
+    if (f.type === 'folder') {
+      return f.path === path || (f.path.startsWith(path + '/') && f.path.split('/').length === path.split('/').length + 1);
+    }
+    // files directly under this path
+    const parent = f.path.includes('/') ? f.path.substring(0, f.path.lastIndexOf('/')) : '';
+    return parent === path && f.name !== '.gitkeep';
+  });
+
+  const content = document.getElementById('fm-content');
+  if (!items.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">&#128193;</div><div class="empty-title">Folder kosong</div><div class="empty-sub">Upload file atau drag & drop ke sini</div></div>`;
+    document.getElementById('status-count').textContent = '0 item';
+    document.getElementById('status-path').textContent = '/' + path;
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'file-grid';
+
+  // Sort: folders first
+  const sorted = [...items].sort((a,b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  sorted.forEach(item => {
+    if (item.name === '.gitkeep') return;
+    const div = document.createElement('div');
+    div.className = 'file-item' + (item.type === 'folder' ? ' folder-item' : '');
+    div.dataset.path = item.path;
+    div.dataset.type = item.type;
+    div.dataset.name = item.name;
+
+    if (item.type === 'folder') {
+      div.innerHTML = `<div class="fi-icon" style="background:rgba(245,158,11,.2);font-size:1.6rem;color:var(--warning)">&#128193;</div><div class="fi-name">${escapeHtml(item.name)}</div><div class="fi-size">Folder</div><div class="fi-check"></div>`;
+      div.addEventListener('dblclick', () => navTo(item.path));
+      div.addEventListener('click', e => toggleSelect(div, item.path));
+    } else {
+      const ic = getFileIconChar(item.mimeType, item.name);
+      div.innerHTML = `<div class="fi-icon" style="background:${ic.bg}">${ic.char}</div><div class="fi-name">${escapeHtml(item.name)}</div><div class="fi-size">${fmtSize(item.size)}</div><div class="fi-check"></div>`;
+      div.addEventListener('click', e => toggleSelect(div, item.path));
+      div.addEventListener('dblclick', () => previewOrEdit(item));
+    }
+
+    div.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(e, item); });
+    grid.appendChild(div);
+  });
+
+  content.innerHTML = '';
+  content.appendChild(grid);
+  document.getElementById('status-count').textContent = `${items.filter(i=>i.name!=='.gitkeep').length} item`;
+  document.getElementById('status-path').textContent = '/' + path;
+}
+
+function navTo(path) {
+  currentPath = path;
+  renderContent(path);
+  // Update tree active
+  document.querySelectorAll('.tree-row').forEach(r => r.classList.remove('active'));
+}
+
+// ─── SELECT ───────────────────────────────────
+function toggleSelect(el, path) {
+  if (selected.has(path)) { selected.delete(path); el.classList.remove('selected'); }
+  else { selected.add(path); el.classList.add('selected'); }
+  updateSelected();
+}
+
+function updateSelected() {
+  const n = selected.size;
+  const selEl = document.getElementById('status-selected');
+  const delBtn = document.getElementById('btn-delete-selected');
+  if (n > 0) { selEl.style.display='inline'; selEl.textContent = `${n} dipilih`; delBtn.style.display='inline-flex'; }
+  else { selEl.style.display='none'; delBtn.style.display='none'; }
+}
+
+// ─── CONTEXT MENU ─────────────────────────────
+let ctxMenu = null;
+function showContextMenu(e, item) {
+  removeCtxMenu();
+  contextTarget = item;
+  const m = document.createElement('div');
+  m.className = 'ctx-menu';
+  const isText = item.mimeType && (item.mimeType.startsWith('text/') || item.mimeType.includes('javascript') || item.mimeType.includes('json'));
+
+  m.innerHTML = `
+    ${item.type==='file' && isText ? `<div class="ctx-item" onclick="ctxEdit()"><span class="ctx-icon">&#9998;</span>Edit File</div>` : ''}
+    ${item.type==='file' ? `<div class="ctx-item" onclick="ctxDownload()"><span class="ctx-icon">&#8595;</span>Download</div>` : ''}
+    ${item.type==='file' ? `<div class="ctx-item" onclick="ctxPreview()"><span class="ctx-icon">&#128065;</span>Preview</div>` : ''}
+    <div class="ctx-item" onclick="ctxRename()"><span class="ctx-icon">&#9997;</span>Rename</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" onclick="ctxDelete()"><span class="ctx-icon">&#128465;</span>Hapus</div>`;
+
+  document.body.appendChild(m);
+  ctxMenu = m;
+
+  // Position
+  const mx = Math.min(e.clientX, window.innerWidth - 200);
+  const my = Math.min(e.clientY, window.innerHeight - m.offsetHeight - 10);
+  m.style.left = mx + 'px';
+  m.style.top = my + 'px';
+
+  setTimeout(() => document.addEventListener('click', removeCtxMenu, { once: true }), 0);
+}
+function removeCtxMenu() { ctxMenu?.remove(); ctxMenu = null; }
+
+async function ctxEdit() {
+  removeCtxMenu();
+  const r = await apiFetch(`/files/view/${SERVER_ID}?path=${encodeURIComponent(contextTarget.path)}`);
+  if (!r?.ok) return toast(r?.data?.message || 'Gagal membuka file.', 'error');
+
+  const { overlay, close } = showModal({
+    title: `Edit: ${contextTarget.name}`,
+    body: `<textarea class="editor-area" id="editor-content">${escapeHtml(r.data.content)}</textarea>`,
+    confirmText: 'Simpan',
+    size: 'style="max-width:700px"',
+    onConfirm: async (_, closeM) => {
+      const content = document.getElementById('editor-content').value;
+      const sr = await apiFetch(`/files/edit/${SERVER_ID}`, { method:'PUT', body: JSON.stringify({ filePath: contextTarget.path, content }) });
+      if (sr?.ok) { toast('File berhasil disimpan.','success'); closeM(); refreshAll(); }
+      else toast(sr?.data?.message || 'Gagal simpan.','error');
+    }
+  });
+}
+
+async function ctxDownload() {
+  removeCtxMenu();
+  window.open(`${API}/files/download/${SERVER_ID}?path=${encodeURIComponent(contextTarget.path)}`, '_blank');
+}
+
+function ctxPreview() {
+  removeCtxMenu();
+  const url = `${BASE_URL}/s/${SERVER_NAME}/${contextTarget.path}`;
+  window.open(url, '_blank');
+}
+
+async function ctxRename() {
+  removeCtxMenu();
+  const { overlay, close } = showModal({
+    title: 'Rename',
+    body: `<div class="input-group"><label>Nama baru</label><input type="text" id="rename-input" value="${escapeHtml(contextTarget.name)}" maxlength="100"></div>`,
+    confirmText: 'Simpan',
+    onConfirm: async (_, closeM) => {
+      const newName = document.getElementById('rename-input').value.trim();
+      if (!newName) return toast('Nama tidak boleh kosong.','error');
+      const r = await apiFetch(`/files/rename/${SERVER_ID}`, { method:'PUT', body: JSON.stringify({ oldPath: contextTarget.path, newName }) });
+      if (r?.ok) { toast('Berhasil di-rename.','success'); closeM(); refreshAll(); }
+      else toast(r?.data?.message || 'Gagal rename.','error');
+    }
+  });
+  setTimeout(() => { const inp = overlay.querySelector('#rename-input'); inp?.focus(); inp?.select(); }, 100);
+}
+
+async function ctxDelete() {
+  removeCtxMenu();
+  const item = contextTarget;
+  confirmModal('Hapus', `Hapus "${item.name}"?`, async () => {
+    let r;
+    if (item.type === 'folder') {
+      r = await apiFetch(`/files/folder/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ folderPath: item.path }) });
+    } else {
+      r = await apiFetch(`/files/file/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ filePath: item.path }) });
+    }
+    if (r?.ok) { toast('Berhasil dihapus.','success'); refreshAll(); }
+    else toast(r?.data?.message || 'Gagal hapus.','error');
+  }, true);
+}
+
+// ─── UPLOAD ───────────────────────────────────
+function setupDrop() {
+  const main = document.getElementById('fm-main');
+  const overlay = document.getElementById('drop-overlay');
+
+  main.addEventListener('dragover', e => { e.preventDefault(); overlay.classList.add('active'); });
+  main.addEventListener('dragleave', e => { if (!main.contains(e.relatedTarget)) overlay.classList.remove('active'); });
+  main.addEventListener('drop', async e => {
+    e.preventDefault();
+    overlay.classList.remove('active');
+    const files = [...e.dataTransfer.files];
+    if (files.length) uploadFiles(files);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-upload').addEventListener('click', () => document.getElementById('file-input').click());
+  document.getElementById('file-input').addEventListener('change', e => { if (e.target.files.length) uploadFiles([...e.target.files]); e.target.value=''; });
+  document.getElementById('btn-refresh-tree').addEventListener('click', refreshAll);
+  document.getElementById('btn-download-all').addEventListener('click', () => window.open(`${API}/files/download-all/${SERVER_ID}`, '_blank'));
+
+  document.getElementById('btn-newfolder').addEventListener('click', () => {
+    showModal({
+      title: 'Buat Folder Baru',
+      body: `<div class="input-group"><label>Nama Folder</label><input type="text" id="folder-name-inp" placeholder="nama-folder" maxlength="50"></div>`,
+      confirmText: 'Buat',
+      onConfirm: async (_, close) => {
+        const name = document.getElementById('folder-name-inp').value.trim().replace(/[^a-zA-Z0-9\-_]/g,'_');
+        if (!name) return toast('Nama folder kosong.','error');
+        const fullPath = currentPath ? `${currentPath}/${name}` : name;
+        const r = await apiFetch(`/files/newfolder/${SERVER_ID}`, { method:'POST', body: JSON.stringify({ folderPath: fullPath }) });
+        if (r?.ok) { toast('Folder dibuat.','success'); close(); refreshAll(); }
+        else toast(r?.data?.message || 'Gagal.','error');
+      }
+    });
+  });
+
+  document.getElementById('btn-delete-selected').addEventListener('click', () => {
+    if (!selected.size) return;
+    confirmModal('Hapus Item', `Hapus ${selected.size} item yang dipilih?`, async () => {
+      for (const path of selected) {
+        const item = allFiles.find(f => f.path === path);
+        if (!item) continue;
+        if (item.type === 'folder') await apiFetch(`/files/folder/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ folderPath: path }) });
+        else await apiFetch(`/files/file/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ filePath: path }) });
+      }
+      toast('Item berhasil dihapus.','success');
+      refreshAll();
+    }, true);
+  });
+
+  init();
+});
+
+async function uploadFiles(files) {
+  const progressWrap = document.getElementById('upload-progress');
+  progressWrap.style.display = 'block';
+  progressWrap.innerHTML = '';
+
+  for (const file of files) {
+    const row = document.createElement('div');
+    row.className = 'upload-row';
+    row.innerHTML = `<span class="uf">${escapeHtml(file.name)}</span><span class="us">${fmtSize(file.size)}</span><div class="prog"><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div></div><span class="us ok">&#8593;</span>`;
+    progressWrap.appendChild(row);
+    const fill = row.querySelector('.progress-fill');
+    const status = row.querySelector('.us.ok');
+
+    try {
+      // Simulate progress
+      fill.style.width = '30%';
+      const fd = new FormData();
+      fd.append('files', file);
+      fd.append('folderPath', currentPath);
+      fill.style.width = '60%';
+
+      const token = getToken();
+      const res = await fetch(`${API}/files/upload/${SERVER_ID}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token },
+        body: fd
+      });
+      const data = await res.json();
+      fill.style.width = '100%';
+
+      if (res.ok) {
+        fill.style.background = 'var(--success)';
+        status.textContent = '✓';
+        status.style.color = 'var(--success)';
+      } else {
+        fill.style.background = 'var(--danger)';
+        status.textContent = '✕';
+        status.style.color = 'var(--danger)';
+        toast(data.message || 'Gagal upload: ' + file.name, 'error');
+      }
+    } catch {
+      fill.style.background = 'var(--danger)';
+    }
+  }
+
+  await refreshAll();
+  setTimeout(() => { progressWrap.style.display = 'none'; progressWrap.innerHTML = ''; }, 3000);
+}
+
+function previewOrEdit(item) {
+  const textTypes = ['text/html','text/css','application/javascript','application/json','text/plain','text/markdown','image/svg+xml'];
+  const isEditable = textTypes.some(t => item.mimeType?.includes(t.split('/')[1]));
+  const isImage = item.mimeType?.startsWith('image/');
+
+  if (isImage) {
+    const url = `${BASE_URL}/s/${SERVER_NAME}/${item.path}`;
+    showModal({ title: item.name, body: `<img src="${url}" style="max-width:100%;border-radius:8px" onerror="this.alt='Gagal load'">`, confirmText:'', cancelText:'Tutup' });
+  } else if (isEditable) {
+    contextTarget = item;
+    ctxEdit();
+  } else {
+    ctxDownload();
+  }
+}
+
+function getFileIconChar(mimeType, name) {
+  const ext = (name || '').split('.').pop().toLowerCase();
+  const map = {
+    'html':{ char:'HTML', color:'#e34c26', bg:'rgba(227,76,38,.25)' },
+    'htm':{ char:'HTML', color:'#e34c26', bg:'rgba(227,76,38,.25)' },
+    'css':{ char:'CSS', color:'#264de4', bg:'rgba(38,77,228,.25)' },
+    'js':{ char:'JS', color:'#f0db4f', bg:'rgba(240,219,79,.2)' },
+    'json':{ char:'{ }', color:'#89d96d', bg:'rgba(137,217,109,.2)' },
+    'png':{ char:'PNG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
+    'jpg':{ char:'JPG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
+    'jpeg':{ char:'JPG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
+    'gif':{ char:'GIF', color:'#9c27b0', bg:'rgba(156,39,176,.2)' },
+    'webp':{ char:'IMG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
+    'svg':{ char:'SVG', color:'#ff9800', bg:'rgba(255,152,0,.2)' },
+    'mp3':{ char:'MP3', color:'#e91e63', bg:'rgba(233,30,99,.2)' },
+    'mp4':{ char:'MP4', color:'#2196f3', bg:'rgba(33,150,243,.2)' },
+    'zip':{ char:'ZIP', color:'#ff9800', bg:'rgba(255,152,0,.2)' },
+    'pdf':{ char:'PDF', color:'#f44336', bg:'rgba(244,67,54,.2)' },
+    'md':{ char:'MD', color:'#607d8b', bg:'rgba(96,125,139,.2)' },
+    'txt':{ char:'TXT', color:'#90a4ae', bg:'rgba(144,164,174,.2)' },
+    'ico':{ char:'ICO', color:'#ffd700', bg:'rgba(255,215,0,.2)' },
+    'ttf':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
+    'woff':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
+    'woff2':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
+  };
+  return map[ext] || { char: ext.toUpperCase().substring(0,3) || 'BIN', color:'#7eb8d4', bg:'rgba(126,184,212,.15)' };
+}
+
+function copySrvUrl() { copyText(`${BASE_URL}/s/${SERVER_NAME}/`); }
+const API = '/api';
+</script>
+</body>
+</html>

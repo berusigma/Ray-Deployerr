@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masuk — Ray App</title>
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+.auth-wrap { min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 16px 40px; }
+.auth-box { background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;max-width:400px; }
+.auth-logo { text-align:center;margin-bottom:28px; }
+.auth-logo .logo-icon { width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--glow),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 12px; }
+.form-stack { display:flex;flex-direction:column;gap:16px; }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+<div id="toast-container"></div>
+
+<div class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">~</div>
+      <h1 style="font-size:1.4rem;font-weight:800;color:var(--wave)">Selamat Datang</h1>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:4px">Masuk ke Ray App</p>
+    </div>
+
+    <div class="form-stack">
+      <div class="input-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Username kamu" autocomplete="username" autofocus>
+      </div>
+      <div class="input-group">
+        <label for="password">Password</label>
+        <div style="position:relative">
+          <input type="password" id="password" placeholder="Password kamu" autocomplete="current-password" style="padding-right:44px">
+          <button id="toggle-pw" type="button" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem" title="Tampilkan password">&#128065;</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;padding:13px">
+        Masuk
+      </button>
+
+      <div style="text-align:center;font-size:.85rem;color:var(--muted)">
+        Belum punya akun? <a href="/register">Daftar gratis</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/utils.js"></script>
+<script>
+renderNavbar('login');
+if (getToken()) window.location.href = '/dashboard';
+
+document.getElementById('toggle-pw').addEventListener('click', function() {
+  const pw = document.getElementById('password');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  this.style.color = pw.type === 'text' ? 'var(--accent)' : 'var(--muted)';
+});
+
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  if (!username || !password) return toast('Username dan password wajib diisi.', 'error');
+
+  const btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Masuk...';
+
+  const r = await apiFetch('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password })
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Masuk';
+
+  if (!r) return;
+  if (r.ok) {
+    setToken(r.data.token);
+    setUser({ username: r.data.username, role: r.data.role });
+    toast('Berhasil masuk!', 'success');
+    const redirect = new URLSearchParams(window.location.search).get('redirect') || '/dashboard';
+    setTimeout(() => window.location.href = redirect, 500);
+  } else {
+    toast(r.data.message || 'Login gagal.', 'error');
+    document.getElementById('password').value = '';
+  }
+}
+
+document.getElementById('btn-login').addEventListener('click', doLogin);
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

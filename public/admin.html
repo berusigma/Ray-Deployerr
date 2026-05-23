@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — Ray App</title>
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+.admin-layout { display:flex; min-height:calc(100vh - 62px); margin-top:62px; }
+.admin-sidebar { width:220px;background:var(--surface);border-right:1px solid var(--border);position:fixed;top:62px;bottom:0;overflow-y:auto;z-index:100;transition:transform .3s; }
+.admin-content { margin-left:220px;padding:28px;flex:1;min-width:0; }
+.panel { display:none; }
+.panel.active { display:block; }
+.panel-title { font-size:1.3rem;font-weight:800;margin-bottom:20px; }
+.search-bar { display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap; }
+.search-bar input { max-width:280px; }
+.badge-role { display:inline-block;padding:2px 8px;border-radius:30px;font-size:.7rem;font-weight:600; }
+.badge-admin { background:rgba(14,165,233,.15);color:var(--accent);border:1px solid rgba(14,165,233,.3); }
+.badge-user { background:rgba(126,184,212,.1);color:var(--muted);border:1px solid var(--border); }
+.badge-blocked { background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3); }
+.action-btns { display:flex;gap:6px;flex-wrap:wrap; }
+.log-row { display:flex;gap:10px;padding:8px 12px;border-radius:8px;font-size:.78rem;border-bottom:1px solid rgba(255,255,255,.04); }
+.log-row:hover { background:rgba(255,255,255,.03); }
+.log-time { color:var(--muted);white-space:nowrap;flex-shrink:0; }
+.log-action { font-weight:600;color:var(--text);flex-shrink:0; }
+.log-target { color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.log-user { color:var(--accent);flex-shrink:0; }
+.log-ip { color:var(--subtle);font-family:monospace;font-size:.7rem;flex-shrink:0; }
+.stat-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px; }
+.stat-box { background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px; }
+.stat-box .val { font-size:2rem;font-weight:900;color:var(--wave); }
+.stat-box .lbl { font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em; }
+.pager { display:flex;gap:8px;align-items:center;margin-top:14px;font-size:.82rem; }
+.ip-tag { display:inline-flex;align-items:center;gap:6px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:3px 10px;font-size:.75rem;color:var(--danger);margin:3px; }
+.ip-tag button { background:none;border:none;color:var(--danger);cursor:pointer;padding:0;font-size:.85rem;line-height:1; }
+.server-preview { font-family:monospace;font-size:.75rem;color:var(--accent); }
+
+@media(max-width:768px){
+  .admin-sidebar { transform:translateX(-100%); }
+  .admin-sidebar.open { transform:translateX(0); }
+  .admin-content { margin-left:0;padding:16px; }
+}
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar">
+  <a href="/" class="navbar-brand"><div class="logo-icon">~</div>Ray App <span style="font-size:.7rem;color:var(--danger);font-weight:600;margin-left:4px">ADMIN</span></a>
+  <button id="admin-mob-btn" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;cursor:pointer;margin-left:auto;display:none">&#9776;</button>
+</nav>
+<div id="toast-container"></div>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<div class="admin-layout">
+  <!-- Sidebar -->
+  <div class="admin-sidebar" id="admin-sidebar">
+    <div style="padding:16px 10px">
+      <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--subtle);padding:10px 10px 6px">Menu Admin</div>
+      <button class="sidebar-link active" onclick="switchPanel('overview')">&#128202; Overview</button>
+      <button class="sidebar-link" onclick="switchPanel('users')">&#128100; Users</button>
+      <button class="sidebar-link" onclick="switchPanel('servers')">&#127758; Servers</button>
+      <button class="sidebar-link" onclick="switchPanel('ips')">&#128274; Blokir IP</button>
+      <button class="sidebar-link" onclick="switchPanel('activity')">&#128203; Aktivitas</button>
+      <div style="border-top:1px solid var(--border);margin:12px 0"></div>
+      <a href="/dashboard" class="sidebar-link">&#8592; Dashboard</a>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="admin-content">
+
+    <!-- OVERVIEW -->
+    <div class="panel active" id="panel-overview">
+      <div class="panel-title">&#128202; Overview</div>
+      <div class="stat-grid" id="stats-grid">
+        <div class="stat-box"><div class="val" id="st-users">—</div><div class="lbl">Total Users</div></div>
+        <div class="stat-box"><div class="val" id="st-servers">—</div><div class="lbl">Total Servers</div></div>
+        <div class="stat-box"><div class="val" id="st-files">—</div><div class="lbl">Total Files</div></div>
+        <div class="stat-box"><div class="val" id="st-ips">—</div><div class="lbl">Blocked IPs</div></div>
+        <div class="stat-box"><div class="val" id="st-storage">—</div><div class="lbl">Total Storage</div></div>
+      </div>
+      <div style="font-size:1rem;font-weight:700;margin-bottom:12px">Aktivitas Terbaru</div>
+      <div class="table-wrap">
+        <div id="recent-activity" style="padding:8px"></div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="panel" id="panel-users">
+      <div class="panel-title">&#128100; Manajemen User</div>
+      <div class="search-bar">
+        <input type="text" id="user-search" placeholder="Cari username..." style="max-width:260px">
+        <button class="btn btn-primary btn-sm" onclick="loadUsers()">Cari</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Username</th><th>Role</th><th>Servers</th><th>Status</th><th>Dibuat</th><th>Aksi</th></tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="users-pager"></div>
+    </div>
+
+    <!-- SERVERS -->
+    <div class="panel" id="panel-servers">
+      <div class="panel-title">&#127758; Manajemen Server</div>
+      <div class="search-bar">
+        <input type="text" id="server-search" placeholder="Cari nama server / owner..." style="max-width:260px">
+        <button class="btn btn-primary btn-sm" onclick="loadServers()">Cari</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Nama</th><th>Owner</th><th>URL</th><th>Storage</th><th>Req</th><th>Terakhir</th><th>Aksi</th></tr></thead>
+          <tbody id="servers-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="servers-pager"></div>
+    </div>
+
+    <!-- BLOCKED IPs -->
+    <div class="panel" id="panel-ips">
+      <div class="panel-title">&#128274; Blokir IP</div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:20px">
+        <div style="font-size:.9rem;font-weight:600;margin-bottom:12px">Blokir IP Baru</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input type="text" id="new-ip" placeholder="Alamat IP (contoh: 192.168.1.1)" style="max-width:240px">
+          <input type="text" id="new-ip-reason" placeholder="Alasan (opsional)" style="max-width:240px">
+          <button class="btn btn-danger btn-sm" onclick="blockIP()">&#128683; Blokir</button>
+        </div>
+      </div>
+      <div style="font-size:.9rem;font-weight:600;margin-bottom:12px">IP yang Diblokir</div>
+      <div id="blocked-ips-list" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+      <div id="blocked-ips-table" class="table-wrap" style="margin-top:12px">
+        <table>
+          <thead><tr><th>IP</th><th>Alasan</th><th>Diblokir oleh</th><th>Waktu</th><th>Aksi</th></tr></thead>
+          <tbody id="ips-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ACTIVITY -->
+    <div class="panel" id="panel-activity">
+      <div class="panel-title">&#128203; Log Aktivitas</div>
+      <div class="search-bar">
+        <input type="text" id="activity-filter" placeholder="Filter aksi / username..." style="max-width:260px">
+        <button class="btn btn-primary btn-sm" onclick="loadActivity()">Filter</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Target</th><th>IP</th></tr></thead>
+          <tbody id="activity-tbody"></tbody>
+        </table>
+      </div>
+      <div class="pager" id="activity-pager"></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/assets/js/utils.js"></script>
+<script>
+if (!requireLogin()) throw new Error();
+if (!requireAdmin()) throw new Error();
+renderNavbar('admin');
+
+let userPage = 1, serverPage = 1, activityPage = 1;
+const BASE_URL = window.location.origin;
+
+// Mobile
+const mob = document.getElementById('admin-mob-btn');
+if (window.innerWidth <= 768) mob.style.display = 'flex';
+mob.addEventListener('click', () => {
+  document.getElementById('admin-sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+});
+document.getElementById('sidebar-overlay').addEventListener('click', () => {
+  document.getElementById('admin-sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+});
+
+// ─── PANELS ───────────────────────────────────
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('panel-' + name)?.classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'overview') loadOverview();
+  if (name === 'users') loadUsers();
+  if (name === 'servers') loadServers();
+  if (name === 'ips') loadIPs();
+  if (name === 'activity') loadActivity();
+  if (window.innerWidth <= 768) {
+    document.getElementById('admin-sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+  }
+}
+
+// ─── OVERVIEW ─────────────────────────────────
+async function loadOverview() {
+  const r = await apiFetch('/admin/stats');
+  if (!r?.ok) return;
+  const d = r.data;
+  document.getElementById('st-users').textContent = d.totalUsers;
+  document.getElementById('st-servers').textContent = d.totalServers;
+  document.getElementById('st-files').textContent = d.totalFiles;
+  document.getElementById('st-ips').textContent = d.blockedIPs;
+  document.getElementById('st-storage').textContent = fmtSize(d.totalStorage);
+
+  const act = document.getElementById('recent-activity');
+  if (!d.recentActivity?.length) { act.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:.82rem">Belum ada aktivitas.</div>'; return; }
+  act.innerHTML = d.recentActivity.map(a => `
+    <div class="log-row">
+      <span class="log-time">${fmtDate(a.timestamp)}</span>
+      <span class="log-user">${escapeHtml(a.username || '-')}</span>
+      <span class="log-action">${escapeHtml(a.action)}</span>
+      <span class="log-target">${escapeHtml(a.target || '')}</span>
+      <span class="log-ip">${escapeHtml(a.ip || '')}</span>
+    </div>`).join('');
+}
+
+// ─── USERS ────────────────────────────────────
+async function loadUsers(page = 1) {
+  userPage = page;
+  const search = document.getElementById('user-search').value.trim();
+  const r = await apiFetch(`/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+  if (!r?.ok) return;
+  const { users, total, pages } = r.data;
+
+  const tbody = document.getElementById('users-tbody');
+  if (!users.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Tidak ada user.</td></tr>'; return; }
+
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td><strong>${escapeHtml(u.username)}</strong></td>
+      <td><span class="badge-role ${u.role==='admin'?'badge-admin':'badge-user'}">${u.role}</span></td>
+      <td>${u.serverCount || 0}/4</td>
+      <td>${u.isBlocked ? '<span class="badge badge-danger">Diblokir</span>' : '<span class="badge badge-active">Aktif</span>'}</td>
+      <td>${fmtDate(u.createdAt)}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-warning btn-sm" onclick="toggleBlock('${u._id}','${escapeHtml(u.username)}',${u.isBlocked})">${u.isBlocked?'Aktifkan':'Blokir'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}','${escapeHtml(u.username)}')">Hapus</button>
+      </div></td>
+    </tr>`).join('');
+
+  renderPager('users-pager', page, pages, p => loadUsers(p));
+}
+
+async function toggleBlock(id, username, isBlocked) {
+  confirmModal(isBlocked ? 'Aktifkan User' : 'Blokir User', `${isBlocked?'Aktifkan':'Blokir'} user "${username}"?`, async () => {
+    const r = await apiFetch(`/admin/users/${id}/block`, { method:'PUT' });
+    if (r?.ok) { toast(`User ${r.data.isBlocked?'diblokir':'diaktifkan'}.`,'success'); loadUsers(userPage); }
+    else toast('Gagal.','error');
+  }, !isBlocked);
+}
+
+async function deleteUser(id, username) {
+  confirmModal('Hapus User', `Hapus user "${username}" dan semua server/filenya?`, async () => {
+    const r = await apiFetch(`/admin/users/${id}`, { method:'DELETE' });
+    if (r?.ok) { toast('User dihapus.','success'); loadUsers(userPage); }
+    else toast(r?.data?.message || 'Gagal.','error');
+  }, true);
+}
+
+// ─── SERVERS ──────────────────────────────────
+async function loadServers(page = 1) {
+  serverPage = page;
+  const search = document.getElementById('server-search').value.trim();
+  const r = await apiFetch(`/admin/servers?page=${page}&search=${encodeURIComponent(search)}`);
+  if (!r?.ok) return;
+  const { servers, total, pages } = r.data;
+
+  const tbody = document.getElementById('servers-tbody');
+  if (!servers.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted)">Tidak ada server.</td></tr>'; return; }
+
+  tbody.innerHTML = servers.map(s => `
+    <tr>
+      <td><strong>${escapeHtml(s.name)}</strong></td>
+      <td><span style="color:var(--accent)">${escapeHtml(s.ownerUsername)}</span></td>
+      <td class="server-preview"><a href="${BASE_URL}/s/${s.name}/" target="_blank" style="color:var(--accent);font-size:.72rem">/s/${escapeHtml(s.name)}/</a></td>
+      <td>${fmtSize(s.totalSize||0)}</td>
+      <td>${s.totalRequests||0}</td>
+      <td>${fmtRelative(s.lastRequest)}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-ghost btn-sm" onclick="viewServerFiles('${s._id}','${escapeHtml(s.name)}')">Lihat File</button>
+        <button class="btn btn-danger btn-sm" onclick="adminDeleteServer('${s._id}','${escapeHtml(s.name)}')">Hapus</button>
+      </div></td>
+    </tr>`).join('');
+
+  renderPager('servers-pager', page, pages, p => loadServers(p));
+}
+
+async function viewServerFiles(id, name) {
+  const r = await apiFetch(`/admin/servers/${id}/files`);
+  if (!r?.ok) return;
+  const { files } = r.data;
+  const list = files.length ? files.map(f => `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem"><span style="flex:1;font-family:monospace">${escapeHtml(f.filePath)}</span><span style="color:var(--muted)">${fmtSize(f.size)}</span></div>`).join('') : '<div style="color:var(--muted);font-size:.82rem">Server kosong.</div>';
+  showModal({ title: `File di "${name}"`, body: `<div style="max-height:300px;overflow-y:auto">${list}</div>`, confirmText:'', cancelText:'Tutup' });
+}
+
+async function adminDeleteServer(id, name) {
+  confirmModal('Hapus Server', `Hapus server "${name}"?`, async () => {
+    const r = await apiFetch(`/admin/servers/${id}`, { method:'DELETE' });
+    if (r?.ok) { toast('Server dihapus.','success'); loadServers(serverPage); }
+    else toast('Gagal.','error');
+  }, true);
+}
+
+// ─── IPs ──────────────────────────────────────
+async function loadIPs() {
+  const r = await apiFetch('/admin/blocked-ips');
+  if (!r?.ok) return;
+  const { ips } = r.data;
+
+  const tbody = document.getElementById('ips-tbody');
+  if (!ips.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Tidak ada IP yang diblokir.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ips.map(ip => `
+    <tr>
+      <td><code style="font-size:.82rem;color:var(--danger)">${escapeHtml(ip.ip)}</code></td>
+      <td>${escapeHtml(ip.reason||'-')}</td>
+      <td>${escapeHtml(ip.blockedBy||'-')}</td>
+      <td>${fmtDate(ip.blockedAt)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="unblockIP('${escapeHtml(ip.ip)}')">Buka Blokir</button></td>
+    </tr>`).join('');
+}
+
+async function blockIP() {
+  const ip = document.getElementById('new-ip').value.trim();
+  const reason = document.getElementById('new-ip-reason').value.trim();
+  if (!ip) return toast('Masukkan IP.','error');
+  const r = await apiFetch('/admin/block-ip', { method:'POST', body: JSON.stringify({ ip, reason }) });
+  if (r?.ok) { toast('IP diblokir.','success'); document.getElementById('new-ip').value=''; document.getElementById('new-ip-reason').value=''; loadIPs(); }
+  else toast(r?.data?.message || 'Gagal.','error');
+}
+
+async function unblockIP(ip) {
+  confirmModal('Buka Blokir', `Buka blokir IP ${ip}?`, async () => {
+    const r = await apiFetch(`/admin/block-ip/${encodeURIComponent(ip)}`, { method:'DELETE' });
+    if (r?.ok) { toast('IP dibuka.','success'); loadIPs(); }
+  });
+}
+
+// ─── ACTIVITY ─────────────────────────────────
+async function loadActivity(page = 1) {
+  activityPage = page;
+  const filter = document.getElementById('activity-filter').value.trim();
+  const r = await apiFetch(`/admin/activity?page=${page}&filter=${encodeURIComponent(filter)}`);
+  if (!r?.ok) return;
+  const { logs, pages } = r.data;
+
+  const tbody = document.getElementById('activity-tbody');
+  if (!logs.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Tidak ada log.</td></tr>'; return; }
+
+  const colorMap = { LOGIN:'var(--success)', REGISTER:'var(--accent)', DELETE:'var(--danger)', CREATE:'var(--wave)', UPLOAD:'#ff9800', BLOCK:'var(--danger)', AUTO_DELETE:'var(--warning)' };
+  function actionColor(a) { for (const [k,v] of Object.entries(colorMap)) if (a.includes(k)) return v; return 'var(--muted)'; }
+
+  tbody.innerHTML = logs.map(l => `
+    <tr>
+      <td style="white-space:nowrap;font-size:.75rem">${fmtDate(l.timestamp)}</td>
+      <td><span style="color:var(--accent)">${escapeHtml(l.username||'SYSTEM')}</span></td>
+      <td><span style="color:${actionColor(l.action)};font-weight:600;font-size:.78rem">${escapeHtml(l.action)}</span></td>
+      <td style="font-size:.75rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.target||'-')}</td>
+      <td style="font-family:monospace;font-size:.72rem;color:var(--subtle)">${escapeHtml(l.ip||'-')}</td>
+    </tr>`).join('');
+
+  renderPager('activity-pager', page, pages, p => loadActivity(p));
+}
+
+// ─── PAGER ────────────────────────────────────
+function renderPager(id, current, total, fn) {
+  const el = document.getElementById(id);
+  if (total <= 1) { el.innerHTML = ''; return; }
+  let html = `<span style="color:var(--muted)">Halaman ${current} / ${total}</span>`;
+  if (current > 1) html += `<button class="btn btn-ghost btn-sm" onclick="(${fn.toString()})(${current-1})">&#8592; Prev</button>`;
+  if (current < total) html += `<button class="btn btn-ghost btn-sm" onclick="(${fn.toString()})(${current+1})">Next &#8594;</button>`;
+  el.innerHTML = html;
+}
+
+// Enter search
+document.getElementById('user-search').addEventListener('keydown', e => e.key==='Enter' && loadUsers());
+document.getElementById('server-search').addEventListener('keydown', e => e.key==='Enter' && loadServers());
+document.getElementById('activity-filter').addEventListener('keydown', e => e.key==='Enter' && loadActivity());
+
+// Load initial
+loadOverview();
+</script>
+</body>
+</html>

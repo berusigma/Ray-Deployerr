@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar — Ray App</title>
+<link rel="stylesheet" href="/assets/css/style.css">
+<style>
+.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:80px 16px 40px; }
+.auth-box { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:36px 32px; width:100%; max-width:440px; }
+.auth-logo { text-align:center; margin-bottom:28px; }
+.auth-logo .logo-icon { width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--glow),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 12px; }
+.auth-logo h1 { font-size:1.4rem;font-weight:800;color:var(--wave); }
+.auth-logo p { font-size:.82rem;color:var(--muted);margin-top:4px; }
+.form-stack { display:flex;flex-direction:column;gap:16px; }
+.strength-bar { height:3px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden; }
+.strength-fill { height:100%;border-radius:2px;transition:width .3s,background .3s; }
+.captcha-box { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px; }
+.captcha-label { font-size:.82rem;color:var(--muted);margin-bottom:8px; }
+.captcha-target { display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:1rem; }
+.captcha-target .emoji-big { font-size:2rem; }
+.captcha-refresh { background:none;border:none;color:var(--accent);cursor:pointer;font-size:.8rem;margin-left:auto;padding:4px 8px;border-radius:6px; }
+.captcha-refresh:hover { background:var(--card); }
+.captcha-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:8px; }
+.captcha-cell { aspect-ratio:1;border-radius:10px;border:2px solid var(--border);background:var(--dark);display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;transition:all .15s;user-select:none; }
+.captcha-cell:hover { border-color:var(--accent);background:rgba(14,165,233,.08); }
+.captcha-cell.selected { border-color:var(--accent2);background:rgba(6,182,212,.15);transform:scale(1.05); }
+.captcha-cell.wrong { border-color:var(--danger);animation:shake .3s; }
+.captcha-selected-count { font-size:.78rem;color:var(--muted);text-align:center;margin-top:6px; }
+.divider { border:none;border-top:1px solid var(--border);margin:8px 0; }
+</style>
+</head>
+<body>
+<nav class="navbar" id="navbar"></nav>
+<div id="toast-container"></div>
+
+<div class="auth-wrap">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="logo-icon">~</div>
+      <h1>Ray App</h1>
+      <p>Buat akun gratis, hosting HTML kamu</p>
+    </div>
+
+    <div class="form-stack" id="register-form">
+      <!-- Username -->
+      <div class="input-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="contoh: rayuser123" maxlength="20" autocomplete="username">
+        <div style="font-size:.73rem;color:var(--subtle);margin-top:3px">3-20 karakter, huruf kecil, angka, underscore</div>
+      </div>
+
+      <!-- Password -->
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Minimal 6 karakter" autocomplete="new-password">
+        <div class="strength-bar"><div class="strength-fill" id="strength-bar" style="width:0%"></div></div>
+        <div style="font-size:.72rem;color:var(--subtle);margin-top:2px" id="strength-text"></div>
+      </div>
+
+      <!-- Confirm Password -->
+      <div class="input-group">
+        <label for="password2">Konfirmasi Password</label>
+        <input type="password" id="password2" placeholder="Ulangi password" autocomplete="new-password">
+      </div>
+
+      <hr class="divider">
+
+      <!-- EMOJI CAPTCHA -->
+      <div class="captcha-box">
+        <div class="captcha-label">Verifikasi Anti-Bot</div>
+        <div class="captcha-target">
+          <span>Pilih semua emoji</span>
+          <span class="emoji-big" id="captcha-target-emoji">...</span>
+          <span>yang sama</span>
+          <button class="captcha-refresh" id="captcha-refresh" type="button">&#8635; Refresh</button>
+        </div>
+        <div class="captcha-grid" id="captcha-grid"></div>
+        <div class="captcha-selected-count" id="captcha-hint">Klik semua emoji yang cocok</div>
+      </div>
+
+      <!-- Terms -->
+      <div style="display:flex;align-items:flex-start;gap:10px;font-size:.8rem;color:var(--muted)">
+        <input type="checkbox" id="terms" style="width:auto;margin-top:2px">
+        <label for="terms">Saya setuju dengan syarat penggunaan. Server yang tidak aktif 7 hari akan otomatis dihapus.</label>
+      </div>
+
+      <button class="btn btn-primary" id="btn-register" style="width:100%;justify-content:center;padding:13px">
+        Daftar Sekarang
+      </button>
+
+      <div style="text-align:center;font-size:.85rem;color:var(--muted)">
+        Sudah punya akun? <a href="/login">Masuk di sini</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/utils.js"></script>
+<script>
+renderNavbar();
+if (getToken()) window.location.href = '/dashboard';
+
+let captchaToken = null;
+let captchaAnswer = null; // target emoji id
+let selectedCells = []; // indices selected
+
+// ─── LOAD CAPTCHA ─────────────────────────────
+async function loadCaptcha() {
+  selectedCells = [];
+  document.getElementById('captcha-hint').textContent = 'Klik semua emoji yang cocok';
+  document.getElementById('captcha-target-emoji').textContent = '...';
+  document.getElementById('captcha-grid').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted);font-size:.82rem">Memuat...</div>';
+
+  const res = await fetch('/api/auth/captcha');
+  const data = await res.json();
+  if (!data.grid) return;
+
+  captchaToken = data.captchaToken;
+  captchaAnswer = null; // answer will be the selected targetId
+  document.getElementById('captcha-target-emoji').textContent = data.targetSymbol;
+
+  // Store target in dataset
+  const grid = document.getElementById('captcha-grid');
+  grid.innerHTML = '';
+  data.grid.forEach((item, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'captcha-cell';
+    cell.textContent = item.symbol;
+    cell.dataset.id = item.id;
+    cell.dataset.idx = i;
+    cell.addEventListener('click', () => toggleCell(cell, item.id));
+    grid.appendChild(cell);
+  });
+}
+
+function toggleCell(cell, id) {
+  const idx = parseInt(cell.dataset.idx);
+  if (cell.classList.contains('selected')) {
+    cell.classList.remove('selected');
+    selectedCells = selectedCells.filter(i => i !== idx);
+  } else {
+    cell.classList.add('selected');
+    selectedCells.push(idx);
+  }
+  const count = selectedCells.length;
+  document.getElementById('captcha-hint').textContent = count > 0 ? `${count} emoji dipilih` : 'Klik semua emoji yang cocok';
+
+  // Detect the answer: if all selected cells have same id, set as answer
+  const cells = document.querySelectorAll('.captcha-cell.selected');
+  const ids = [...cells].map(c => c.dataset.id);
+  if (ids.length > 0 && ids.every(i => i === ids[0])) {
+    captchaAnswer = ids[0];
+  } else {
+    captchaAnswer = null;
+  }
+}
+
+document.getElementById('captcha-refresh').addEventListener('click', loadCaptcha);
+loadCaptcha();
+
+// ─── PASSWORD STRENGTH ────────────────────────
+document.getElementById('password').addEventListener('input', function() {
+  const v = this.value;
+  let score = 0;
+  if (v.length >= 6) score++;
+  if (v.length >= 10) score++;
+  if (/[A-Z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^a-zA-Z0-9]/.test(v)) score++;
+
+  const bar = document.getElementById('strength-bar');
+  const text = document.getElementById('strength-text');
+  const pct = (score / 5 * 100) + '%';
+  bar.style.width = pct;
+  if (score <= 1) { bar.style.background = 'var(--danger)'; text.textContent = 'Lemah'; text.style.color = 'var(--danger)'; }
+  else if (score <= 3) { bar.style.background = 'var(--warning)'; text.textContent = 'Sedang'; text.style.color = 'var(--warning)'; }
+  else { bar.style.background = 'var(--success)'; text.textContent = 'Kuat'; text.style.color = 'var(--success)'; }
+});
+
+// ─── REGISTER ─────────────────────────────────
+document.getElementById('btn-register').addEventListener('click', async () => {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const password2 = document.getElementById('password2').value;
+  const terms = document.getElementById('terms').checked;
+
+  if (!username || !password || !password2) return toast('Semua field wajib diisi.', 'error');
+  if (password !== password2) return toast('Password tidak cocok.', 'error');
+  if (!terms) return toast('Centang persetujuan syarat penggunaan dulu.', 'warning');
+  if (!captchaToken) return toast('Muat ulang captcha dulu.', 'error');
+  if (!captchaAnswer || selectedCells.length < 2) return toast('Pilih semua emoji yang sama dengan gambar di atas.', 'warning');
+
+  const btn = document.getElementById('btn-register');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Mendaftar...';
+
+  const r = await apiFetch('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ username, password, captchaToken, captchaAnswer })
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Daftar Sekarang';
+
+  if (!r) return;
+  if (r.ok) {
+    setToken(r.data.token);
+    setUser({ username: r.data.username, role: r.data.role });
+    toast('Akun berhasil dibuat! Selamat datang.', 'success');
+    setTimeout(() => window.location.href = '/dashboard', 800);
+  } else {
+    toast(r.data.message || 'Gagal mendaftar.', 'error');
+    if (r.data.error === 'CAPTCHA_WRONG' || r.data.error === 'CAPTCHA_EXPIRED') {
+      // Mark wrong
+      document.querySelectorAll('.captcha-cell.selected').forEach(c => c.classList.add('wrong'));
+      setTimeout(loadCaptcha, 800);
+    }
+  }
+});
+
+// Enter key
+document.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-register').click(); });
+</script>
+</body>
+</html>
