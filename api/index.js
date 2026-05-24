@@ -1,153 +1,117 @@
 require('dotenv').config();
-const express = require('express');
+const express  = require('express');
 const mongoose = require('mongoose');
-const helmet = require('helmet');
+const helmet   = require('helmet');
 const rateLimit = require('express-rate-limit');
-const cors = require('cors');
-const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
 const path = require('path');
-const { ipBlocker } = require('./middleware');
+const { ipGuard } = require('./middleware');
 
 const app = express();
 
-// ─── CONNECT MONGODB ─────────────────────────────────────
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/rayapp')
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch(e => console.error('❌ MongoDB error:', e.message));
+// ── DB connection (cached for serverless) ──────────────
+let dbConn = null;
+async function connectDB() {
+  if (dbConn && mongoose.connection.readyState === 1) return;
+  dbConn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost/rayapp');
+  console.log('MongoDB connected');
+}
+connectDB().catch(e => console.error('MongoDB error:', e.message));
 
-// ─── SECURITY HEADERS ────────────────────────────────────
+// ── Security ───────────────────────────────────────────
+app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
+      scriptSrc:  ["'self'", "'unsafe-inline'"],
+      styleSrc:   ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:     ["'self'", 'data:', 'blob:'],
       connectSrc: ["'self'"],
-      fontSrc: ["'self'"],
-      objectSrc: ["'none'"],
-      frameSrc: ["'none'"]
+      frameSrc:   ["'none'"],
+      objectSrc:  ["'none'"]
     }
   },
   crossOriginEmbedderPolicy: false
 }));
 
-// ─── RATE LIMITERS ───────────────────────────────────────
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true });
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'RATE_LIMIT', message: 'Terlalu banyak percobaan, coba lagi 15 menit.' } });
-const uploadLimiter = rateLimit({ windowMs: 60 * 1000, max: 30 });
-
-app.use(globalLimiter);
-app.use(cors({ origin: process.env.BASE_URL || '*', credentials: true }));
-app.use(cookieParser());
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(rateLimit({ windowMs: 15*60*1000, max: 500, standardHeaders: true, legacyHeaders: false }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 app.use(mongoSanitize());
-app.use(ipBlocker);
+app.use(ipGuard);
 
-// ─── STATIC FILES ────────────────────────────────────────
+// ── Static files ───────────────────────────────────────
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ─── ROUTES ──────────────────────────────────────────────
-app.use('/api/auth', authLimiter, require('./routes/auth'));
-app.use('/api/servers', require('./routes/servers'));
-app.use('/api/files', uploadLimiter, require('./routes/files'));
-app.use('/api/admin', require('./routes/admin'));
+// ── API routes ─────────────────────────────────────────
+const authLimiter = rateLimit({ windowMs: 15*60*1000, max: 30 });
+app.use('/api/auth',   authLimiter, require('./routes/auth'));
+app.use('/api/server', require('./routes/servers'));
+app.use('/api/file',   require('./routes/files'));
+app.use('/api/admin',  require('./routes/admin'));
 
-// ─── SERVE HOSTED WEBSITES ───────────────────────────────
-// GET /s/foldername/path  → serve user's file
-const { Server, FileData } = require('./models');
-
-app.get('/s/:serverName/*', async (req, res) => {
+// ── Serve hosted sites:  /s/sitename/path ─────────────
+const { Server, File } = require('./models');
+app.use('/s/:site', async (req, res) => {
   try {
-    const serverName = req.params.serverName.toLowerCase();
-    const filePath = req.params[0] || 'index.html';
+    await connectDB();
+    const siteName = req.params.site.toLowerCase();
+    const server = await Server.findOne({ name: siteName });
+    if (!server) return res.status(404).send(page404(siteName));
 
-    const server = await Server.findOne({ name: serverName, isActive: true });
-    if (!server) return res.status(404).send(notFoundPage(serverName));
+    await Server.updateOne({ _id: server._id }, { $inc: { totalRequests: 1 }, lastRequestAt: new Date() });
 
-    // Update traffic
-    await Server.updateOne({ _id: server._id }, {
-      $inc: { totalRequests: 1 },
-      lastRequest: new Date()
-    });
+    let filePath = req.path.replace(/^\//, '') || 'index.html';
+    if (filePath.endsWith('/')) filePath += 'index.html';
 
-    const targetPath = filePath || 'index.html';
-    const fileData = await FileData.findOne({ serverId: server._id, filePath: targetPath });
+    let file = await File.findOne({ serverId: server._id, filePath });
+    if (!file) file = await File.findOne({ serverId: server._id, filePath: 'index.html' });
+    if (!file) return res.status(404).send(page404(siteName));
 
-    if (!fileData) {
-      // Try index.html
-      const indexFile = await FileData.findOne({ serverId: server._id, filePath: 'index.html' });
-      if (indexFile) {
-        res.set('Content-Type', 'text/html; charset=utf-8');
-        res.set('X-Content-Type-Options', 'nosniff');
-        res.set('X-Frame-Options', 'SAMEORIGIN');
-        return res.send(indexFile.data);
-      }
-      return res.status(404).send(notFoundPage(serverName));
-    }
-
-    res.set('Content-Type', fileData.mimeType);
-    res.set('X-Content-Type-Options', 'nosniff');
-    if (fileData.mimeType.startsWith('text/')) {
-      res.set('Content-Type', fileData.mimeType + '; charset=utf-8');
-    }
-    res.send(fileData.data);
+    res.setHeader('Content-Type', file.mimeType + (file.mimeType.startsWith('text/') ? '; charset=utf-8' : ''));
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(file.data);
   } catch (e) {
-    res.status(500).send('<h1>Server Error</h1>');
+    res.status(500).send('<h1>Error</h1>');
   }
 });
 
-app.get('/s/:serverName', async (req, res) => {
-  res.redirect(`/s/${req.params.serverName}/`);
-});
-
-// ─── AUTO-DELETE INACTIVE SERVERS (run every hour) ───────
-const { Activity } = require('./models');
+// ── Auto-delete inactive servers (hourly) ─────────────
 setInterval(async () => {
   try {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const inactiveServers = await Server.find({ lastRequest: { $lt: sevenDaysAgo }, isActive: true });
-    for (const srv of inactiveServers) {
-      await FileData.deleteMany({ serverId: srv._id });
-      await Server.deleteOne({ _id: srv._id });
-      await Activity.create({
-        username: 'SYSTEM',
-        action: 'AUTO_DELETE_SERVER',
-        target: srv.name,
-        ip: 'system'
-      });
-      // Update owner serverCount
+    await connectDB();
+    const cutoff = new Date(Date.now() - 7*24*60*60*1000);
+    const dead = await Server.find({ lastRequestAt: { $lt: cutoff } });
+    for (const s of dead) {
+      await File.deleteMany({ serverId: s._id });
+      await Server.deleteOne({ _id: s._id });
       const { User } = require('./models');
-      await User.updateOne({ _id: srv.owner }, { $inc: { serverCount: -1 } });
-      console.log(`🗑️ Auto-deleted inactive server: ${srv.name}`);
+      await User.updateOne({ _id: s.owner }, { $inc: { serverCount: -1 } });
+      console.log('Auto-deleted inactive server:', s.name);
     }
-  } catch (e) { /* silent */ }
-}, 60 * 60 * 1000);
+  } catch (_) {}
+}, 60*60*1000);
 
-// ─── SPA FALLBACK ────────────────────────────────────────
-app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, '../public/dashboard.html')));
-app.get('/filemanager', (req, res) => res.sendFile(path.join(__dirname, '../public/filemanager.html')));
-app.get('/admin-panel', (req, res) => res.sendFile(path.join(__dirname, '../public/admin.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, '../public/login.html')));
-app.get('/register', (req, res) => res.sendFile(path.join(__dirname, '../public/register.html')));
-
-// ─── 404 ─────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).sendFile(path.join(__dirname, '../public/404.html'));
+// ── SPA routes ─────────────────────────────────────────
+const pages = ['dashboard','filemanager','admin-panel','login','register'];
+pages.forEach(p => {
+  app.get('/' + p, (_, res) => res.sendFile(path.join(__dirname, `../public/${p}.html`)));
 });
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../public/index.html')));
+app.use((_, res) => res.status(404).sendFile(path.join(__dirname, '../public/404.html')));
 
-// ─── ERROR HANDLER ───────────────────────────────────────
+// ── Error handler ──────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'SERVER_ERROR', message: 'Terjadi kesalahan server.' });
+  console.error(err);
+  res.status(500).json({ ok: false, msg: 'Server error.' });
 });
 
-function notFoundPage(name) {
-  return `<!DOCTYPE html><html><head><title>404 - Ray App</title><style>body{font-family:sans-serif;background:#0a1628;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;flex-direction:column}h1{font-size:4rem;margin:0}p{color:#64b5f6}</style></head><body><h1>404</h1><p>Server <strong>${name}</strong> tidak ditemukan atau sudah dihapus.</p><a href="/" style="color:#4dd0e1;margin-top:1rem">Kembali ke Ray App</a></body></html>`;
+function page404(name) {
+  return `<!DOCTYPE html><html><head><title>404</title><style>body{font-family:system-ui;background:#f1f5f9;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0;gap:12px}h1{font-size:4rem;margin:0;color:#2563eb}p{color:#64748b}</style></head><body><h1>404</h1><p>Site <b>${name}</b> tidak ditemukan.</p><a href="/" style="color:#2563eb">Kembali</a></body></html>`;
 }
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Ray App running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Ray App running on :${PORT}`));
 module.exports = app;
