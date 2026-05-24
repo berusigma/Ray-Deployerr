@@ -2,649 +2,532 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>File Manager — Ray App</title>
-<link rel="stylesheet" href="/assets/css/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 <style>
-body { overflow: hidden; }
-.fm-wrap { display:flex; height:calc(100vh - 62px); margin-top:62px; }
-
-/* Sidebar */
-.fm-sidebar { width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:relative;z-index:10; }
-.fm-sidebar-head { padding:14px 12px;border-bottom:1px solid var(--border); }
-.server-info-box { background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px; }
-.server-info-name { font-weight:700;color:var(--wave);font-size:.9rem;display:flex;align-items:center;gap:6px; }
-.server-info-url { font-size:.7rem;color:var(--muted);font-family:monospace;margin-top:3px;cursor:pointer; }
-.server-info-url:hover { color:var(--accent); }
-.fm-storage-bar { margin-top:6px; }
-.fm-storage-label { font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between;margin-bottom:3px; }
-
-/* Tree */
-.fm-tree { flex:1;overflow-y:auto;padding:8px; }
-.tree-row { display:flex;align-items:center;gap:5px;padding:5px 8px;border-radius:7px;cursor:pointer;font-size:.8rem;color:var(--muted);transition:background .12s;user-select:none;white-space:nowrap; }
-.tree-row:hover { background:var(--card);color:var(--text); }
-.tree-row.active { background:rgba(14,165,233,.12);color:var(--wave); }
-.tree-toggle { width:14px;text-align:center;font-size:.65rem;flex-shrink:0;transition:transform .15s; }
-.tree-toggle.open { transform:rotate(90deg); }
-.tree-fname { overflow:hidden;text-overflow:ellipsis; }
-.tree-children { padding-left:14px;border-left:1px solid var(--border);margin-left:14px; }
-
-/* Main area */
-.fm-main { flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0; }
-.fm-topbar { padding:10px 14px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
-.fm-breadcrumb { display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--muted);flex:1;min-width:100px;overflow:hidden; }
-.fm-breadcrumb span.crumb { cursor:pointer;padding:2px 6px;border-radius:5px;white-space:nowrap; }
-.fm-breadcrumb span.crumb:hover { background:var(--card);color:var(--text); }
-.fm-breadcrumb .sep { color:var(--subtle);font-size:.7rem; }
-.fm-actions { display:flex;gap:6px;align-items:center;flex-wrap:wrap; }
-
-/* Content */
-.fm-content { flex:1;overflow-y:auto;padding:14px; }
-.file-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px; }
-.file-item { background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:border-color .15s,transform .12s;position:relative;user-select:none; }
-.file-item:hover { border-color:var(--accent);transform:translateY(-1px); }
-.file-item.selected { border-color:var(--accent2);background:rgba(6,182,212,.08); }
-.fi-icon { width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:.75rem;font-weight:800;color:#fff; }
-.fi-name { font-size:.72rem;color:var(--text);word-break:break-all;line-height:1.3; }
-.fi-size { font-size:.63rem;color:var(--muted);margin-top:3px; }
-.fi-check { position:absolute;top:5px;right:5px;width:16px;height:16px;border:2px solid var(--border);border-radius:4px;background:var(--dark);transition:all .12s; }
-.file-item.selected .fi-check { background:var(--accent2);border-color:var(--accent2); }
-.file-item.selected .fi-check::after { content:'✓';color:#fff;font-size:.6rem;display:block;text-align:center;line-height:12px;font-weight:700; }
-.folder-item { background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.25); }
-.folder-item:hover { border-color:var(--warning); }
-
-/* Drop zone */
-.drop-overlay { position:absolute;inset:0;background:rgba(14,165,233,.12);border:3px dashed var(--accent);border-radius:14px;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:50;font-size:1rem;color:var(--accent);font-weight:700; }
-.drop-overlay.active { display:flex; }
-
-/* Context menu */
-.ctx-menu { position:fixed;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:5px;z-index:2000;min-width:170px;box-shadow:var(--shadow);animation:scaleIn .12s; }
-.ctx-item { padding:8px 12px;border-radius:7px;font-size:.82rem;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--muted);transition:background .1s; }
-.ctx-item:hover { background:var(--surface);color:var(--text); }
-.ctx-item.danger { color:var(--danger); }
-.ctx-item.danger:hover { background:rgba(239,68,68,.1); }
-.ctx-sep { height:1px;background:var(--border);margin:3px 0; }
-.ctx-icon { width:16px;text-align:center;font-size:.85rem; }
-
-/* Editor modal */
-.editor-area { width:100%;height:320px;font-family:monospace;font-size:.82rem;resize:vertical;background:var(--dark);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:12px;line-height:1.6; }
-
-/* Status bar */
-.fm-statusbar { padding:5px 14px;border-top:1px solid var(--border);background:var(--surface);font-size:.72rem;color:var(--subtle);display:flex;gap:16px;align-items:center;flex-wrap:wrap; }
-
-/* Upload progress */
-.upload-progress-wrap { background:var(--surface);border-top:1px solid var(--border);padding:10px 14px;max-height:140px;overflow-y:auto; }
-.upload-row { display:flex;align-items:center;gap:10px;font-size:.78rem;margin-bottom:6px; }
-.upload-row .uf { flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text); }
-.upload-row .us { font-size:.7rem;flex-shrink:0; }
-.upload-row .prog { width:80px;flex-shrink:0; }
-
-@media(max-width:768px){
-  .fm-sidebar { position:fixed;top:62px;left:0;bottom:0;transform:translateX(-100%);transition:transform .3s;z-index:200; }
-  .fm-sidebar.open { transform:translateX(0); }
-  .fm-mob-toggle { display:flex; }
-  .file-grid { grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); }
-}
+  body { overflow: hidden; }
+  .fm-mob-toggle { display:none; position:fixed; bottom:16px; left:16px; z-index:200; background:var(--primary); color:#fff; border:none; border-radius:50%; width:46px; height:46px; font-size:1.2rem; cursor:pointer; box-shadow:var(--sh-md); }
+  @media(max-width:768px){ .fm-mob-toggle { display:flex; align-items:center; justify-content:center; } }
+  .fm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:299; }
+  .fm-overlay.show { display:block; }
 </style>
 </head>
 <body>
-<nav class="navbar" id="navbar">
-  <a href="/" class="navbar-brand"><div class="logo-icon">~</div>Ray App</a>
-  <button id="fm-mob-btn" style="background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:7px 10px;cursor:pointer;margin-left:auto;display:none">&#9776;</button>
+
+<!-- Navbar (simplified for FM) -->
+<nav class="nav" style="z-index:400" id="nav-fm">
+  <a href="/" class="nav-brand" style="text-decoration:none">
+    <div class="nav-brand-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L2 7 L12 12 L22 7 Z"/><path d="M2 17 L12 22 L22 17"/><path d="M2 12 L12 17 L22 12"/></svg>
+    </div>
+    Ray App
+  </a>
+  <div id="nav-server-info" style="font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:8px;margin-left:12px">
+    <span id="nav-srv-name" style="font-weight:600;color:var(--text)"></span>
+    <a id="nav-srv-url" href="#" target="_blank" style="font-size:.75rem;color:var(--primary);font-family:monospace"></a>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <a href="/dashboard" class="btn btn-ghost btn-sm">← Dashboard</a>
+    <button id="btn-dl-all" class="btn btn-ghost btn-sm" title="Download semua sebagai ZIP">↓ ZIP</button>
+  </div>
 </nav>
+<div id="toasts"></div>
+<div class="fm-overlay" id="fm-overlay"></div>
 
-<div id="toast-container"></div>
-
-<div class="fm-wrap">
-  <!-- SIDEBAR -->
+<div class="fm-layout">
+  <!-- Sidebar / Tree -->
   <div class="fm-sidebar" id="fm-sidebar">
     <div class="fm-sidebar-head">
-      <div class="server-info-box">
-        <div class="server-info-name">&#127758; <span id="sb-server-name">...</span></div>
-        <div class="server-info-url" id="sb-server-url" onclick="copySrvUrl()">klik untuk salin URL</div>
-        <div class="fm-storage-bar">
-          <div class="fm-storage-label"><span>Storage</span><span id="sb-storage">0 B / 50 MB</span></div>
-          <div class="progress-bar"><div class="progress-fill" id="sb-prog" style="width:0%"></div></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:6px">
-        <a href="/dashboard" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">&#8592; Dashboard</a>
-        <button class="btn btn-ghost btn-sm" id="btn-refresh-tree" title="Refresh">&#8635;</button>
+      <div style="font-size:.82rem;font-weight:600;color:var(--text2);margin-bottom:6px">Storage</div>
+      <div class="prog-bar" style="margin-bottom:4px"><div class="prog-fill" id="stor-bar" style="width:0%"></div></div>
+      <div style="font-size:.72rem;color:var(--muted)" id="stor-label">0 B / 50 MB</div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-primary btn-sm" id="btn-upload" style="flex:1;justify-content:center">↑ Upload</button>
+        <button class="btn btn-ghost btn-sm" id="btn-mkdir" title="Buat Folder">+Dir</button>
+        <button class="btn btn-ghost btn-sm" id="btn-refresh" title="Refresh">↺</button>
       </div>
     </div>
-    <div class="fm-tree" id="fm-tree"><div style="padding:12px;color:var(--muted);font-size:.8rem">Memuat...</div></div>
+    <div class="fm-tree" id="fm-tree">
+      <div style="padding:12px;color:var(--muted);font-size:.8rem">Memuat...</div>
+    </div>
   </div>
 
-  <!-- MAIN -->
-  <div class="fm-main" id="fm-main" style="position:relative">
-    <!-- Drop overlay -->
-    <div class="drop-overlay" id="drop-overlay">
-      <div style="font-size:2rem">&#8659;</div>
-      <div>Lepas file di sini untuk upload</div>
-    </div>
-
-    <!-- Topbar -->
-    <div class="fm-topbar">
-      <div class="fm-breadcrumb" id="fm-breadcrumb">
-        <span class="crumb" onclick="navTo('')">&#127968; root</span>
+  <!-- Main content -->
+  <div class="fm-main">
+    <div class="fm-bar">
+      <div class="fm-breadcrumb" id="fm-bread">
+        <span class="fm-crumb" data-path="">⌂ root</span>
       </div>
-      <div class="fm-actions">
-        <button class="btn btn-primary btn-sm" id="btn-upload" title="Upload File">&#8593; Upload</button>
-        <button class="btn btn-ghost btn-sm" id="btn-newfolder" title="Buat Folder">&#128193; Folder</button>
-        <button class="btn btn-ghost btn-sm" id="btn-download-all" title="Download Semua">&#8595; Semua</button>
-        <button class="btn btn-danger btn-sm" id="btn-delete-selected" style="display:none">&#128465; Hapus</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-danger btn-sm" id="btn-del-sel" style="display:none">Hapus Pilihan</button>
       </div>
     </div>
 
-    <!-- File Content -->
     <div class="fm-content" id="fm-content">
-      <div class="empty-state"><div class="spinner" style="width:28px;height:28px"></div><div>Memuat...</div></div>
+      <div class="empty"><div class="spinner lg"></div><div class="empty-title" style="margin-top:8px">Memuat...</div></div>
     </div>
 
     <!-- Upload progress -->
-    <div class="upload-progress-wrap" id="upload-progress" style="display:none"></div>
+    <div id="upload-area" style="display:none;border-top:1.5px solid var(--border);padding:10px 14px;background:var(--surface);max-height:130px;overflow-y:auto">
+      <div class="upload-list" id="upload-list"></div>
+    </div>
 
-    <!-- Status bar -->
     <div class="fm-statusbar">
       <span id="status-count">0 item</span>
-      <span id="status-selected" style="display:none;color:var(--accent)">0 dipilih</span>
-      <span id="status-path" style="margin-left:auto;font-family:monospace">/</span>
+      <span id="status-sel" style="display:none;color:var(--primary);font-weight:600"></span>
+      <span style="margin-left:auto;font-family:monospace" id="status-path">/</span>
     </div>
   </div>
 </div>
 
+<!-- Mobile toggle -->
+<button class="fm-mob-toggle" id="fm-mob-btn" title="File Tree">≡</button>
+
 <!-- Hidden file input -->
-<input type="file" id="file-input" multiple style="display:none" accept="*/*">
+<input type="file" id="file-input" multiple style="display:none">
 
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 <script>
-if (!requireLogin()) throw new Error();
+if (!requireLogin()) throw 0;
 
-const params = new URLSearchParams(location.search);
-const SERVER_ID = params.get('server');
-const SERVER_NAME = params.get('name') || '';
-const BASE_URL = window.location.origin;
+// ── Params ────────────────────────────────────────
+const params   = new URLSearchParams(location.search);
+const SRV_ID   = params.get('id');
+const SRV_NAME = params.get('name') || '';
 
-if (!SERVER_ID) { toast('Server tidak ditemukan.','error'); setTimeout(()=>location.href='/dashboard',1500); }
+if (!SRV_ID) { alert('Server tidak ditemukan.'); location.href = '/dashboard'; }
 
-// ─── STATE ────────────────────────────────────
-let currentPath = '';
-let fileTree = [];
-let allFiles = [];
-let selected = new Set();
-let serverData = null;
-let contextTarget = null;
+// ── State ─────────────────────────────────────────
+let allFiles    = [];   // flat array from server
+let curPath     = '';   // current folder path
+let selected    = new Set();
+let ctxMenu     = null;
+let dragTarget  = null;
 
-// ─── INIT ─────────────────────────────────────
-async function init() {
-  document.getElementById('sb-server-name').textContent = SERVER_NAME;
-  const url = `${BASE_URL}/s/${SERVER_NAME}/`;
-  document.getElementById('sb-server-url').textContent = url;
+// ── Server URL ────────────────────────────────────
+const SRV_URL = `${location.origin}/s/${SRV_NAME}/`;
+document.getElementById('nav-srv-name').textContent = SRV_NAME;
+const urlEl = document.getElementById('nav-srv-url');
+urlEl.textContent = SRV_URL;
+urlEl.href = SRV_URL;
 
-  // Mobile sidebar toggle
-  const mob = document.getElementById('fm-mob-btn');
-  if (window.innerWidth <= 768) mob.style.display = 'flex';
-  mob.addEventListener('click', () => document.getElementById('fm-sidebar').classList.toggle('open'));
+// ── Mobile sidebar ────────────────────────────────
+document.getElementById('fm-mob-btn').addEventListener('click', () => {
+  document.getElementById('fm-sidebar').classList.toggle('open');
+  document.getElementById('fm-overlay').classList.toggle('show');
+});
+document.getElementById('fm-overlay').addEventListener('click', () => {
+  document.getElementById('fm-sidebar').classList.remove('open');
+  document.getElementById('fm-overlay').classList.remove('show');
+});
 
-  await refreshAll();
-  setupDrop();
-}
+// ── Load data ─────────────────────────────────────
+async function load() {
+  const d = await api(`/server/${SRV_ID}/files`);
+  if (!d?.ok) { toast(d?.msg || 'Gagal memuat.', 'err'); return; }
 
-async function refreshAll() {
-  await Promise.all([loadTree(), loadContent()]);
-}
-
-// ─── LOAD TREE ────────────────────────────────
-async function loadTree() {
-  const r = await apiFetch(`/servers/${SERVER_ID}/filetree`);
-  if (!r?.ok) return;
-  const { tree, totalSize } = r.data;
-  fileTree = tree;
-  serverData = { totalSize };
+  allFiles = d.files.filter(f => !f.filePath.endsWith('/.keep'));
 
   // Storage bar
-  const pct = Math.min(100, (totalSize / (50*1024*1024))*100).toFixed(1);
-  document.getElementById('sb-storage').textContent = `${fmtSize(totalSize)} / 50 MB`;
-  document.getElementById('sb-prog').style.width = pct + '%';
-  document.getElementById('sb-prog').style.background = pct > 85 ? 'var(--danger)' : pct > 60 ? 'var(--warning)' : '';
+  const used = d.server.totalSize || 0;
+  const max  = 50 * 1024 * 1024;
+  const pct  = Math.min(100, (used / max) * 100);
+  document.getElementById('stor-bar').style.width = pct + '%';
+  document.getElementById('stor-bar').className = 'prog-fill' + (pct > 85 ? ' danger' : pct > 60 ? ' warn' : '');
+  document.getElementById('stor-label').textContent = `${fmtBytes(used)} / 50 MB`;
 
-  renderTree(tree.children, document.getElementById('fm-tree'), '');
+  renderTree();
+  renderContent();
 }
 
-function renderTree(nodes, container, parentPath) {
-  container.innerHTML = '';
-  if (!nodes || !nodes.length) {
-    container.innerHTML = '<div style="padding:8px;color:var(--muted);font-size:.75rem;font-style:italic">Kosong</div>';
-    return;
+// ── Tree ──────────────────────────────────────────
+function renderTree() {
+  const tree = document.getElementById('fm-tree');
+  const folders = new Set();
+  allFiles.forEach(f => {
+    const parts = f.filePath.split('/');
+    for (let i = 1; i < parts.length; i++) folders.add(parts.slice(0, i).join('/'));
+  });
+
+  function buildNode(prefix) {
+    const children = [];
+    const directFolders = [...folders].filter(f => {
+      const p = f.lastIndexOf('/');
+      const parent = p < 0 ? '' : f.substring(0, p);
+      return parent === prefix;
+    });
+    const directFiles = allFiles.filter(f => {
+      const p = f.filePath.lastIndexOf('/');
+      const parent = p < 0 ? '' : f.filePath.substring(0, p);
+      return parent === prefix;
+    });
+
+    directFolders.sort().forEach(folder => {
+      const name = folder.split('/').pop();
+      const row = document.createElement('div');
+      row.className = 'tree-row' + (curPath === folder ? ' active' : '');
+      row.dataset.path = folder;
+      row.innerHTML = `<span class="tree-arrow">▶</span><span class="tree-icon" style="color:var(--warning)">📁</span><span class="tree-name">${esc(name)}</span>`;
+      row.addEventListener('click', e => { e.stopPropagation(); navTo(folder); });
+      children.push(row);
+    });
+
+    directFiles.forEach(f => {
+      const name = f.filePath.split('/').pop();
+      const ic = fileIcon(name, f.mimeType);
+      const row = document.createElement('div');
+      row.className = 'tree-row' + (curPath === f.filePath ? ' active' : '');
+      row.dataset.path = f.filePath;
+      row.innerHTML = `<span style="width:12px"></span><span class="tree-icon" style="width:14px;height:10px;border-radius:2px;background:${ic.color};display:inline-flex;align-items:center;justify-content:center;font-size:.45rem;font-weight:800;color:#fff;margin-right:2px">${ic.label}</span><span class="tree-name">${esc(name)}</span>`;
+      row.addEventListener('click', e => { e.stopPropagation(); navTo(prefix); });
+      children.push(row);
+    });
+
+    return children;
   }
 
-  // Folders first
-  const sorted = [...nodes].sort((a,b) => {
-    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-
-  sorted.forEach(node => {
-    const div = document.createElement('div');
-    if (node.type === 'folder') {
-      const childContainer = document.createElement('div');
-      childContainer.className = 'tree-children';
-      childContainer.style.display = 'none';
-      let open = false;
-
-      const row = document.createElement('div');
-      row.className = 'tree-row';
-      row.innerHTML = `<span class="tree-toggle">&#9658;</span><span style="color:var(--warning)">&#128193;</span><span class="tree-fname">${escapeHtml(node.name)}</span>`;
-      row.addEventListener('click', () => {
-        open = !open;
-        row.querySelector('.tree-toggle').classList.toggle('open', open);
-        childContainer.style.display = open ? 'block' : 'none';
-        navTo(node.path || (parentPath ? parentPath+'/'+node.name : node.name));
-      });
-      div.appendChild(row);
-
-      if (node.children?.length) {
-        renderTree(node.children, childContainer, node.path);
-        div.appendChild(childContainer);
-      }
-    } else {
-      const row = document.createElement('div');
-      row.className = 'tree-row';
-      const ic = getFileIconChar(node.mimeType, node.name);
-      row.innerHTML = `<span style="width:14px"></span><span style="font-size:.7rem;color:${ic.color};font-weight:700">${ic.char}</span><span class="tree-fname">${escapeHtml(node.name)}</span>`;
-      row.addEventListener('click', () => navTo(node.path));
-      div.appendChild(row);
-    }
-    container.appendChild(div);
-  });
+  tree.innerHTML = '';
+  const rootItems = buildNode('');
+  if (!rootItems.length) { tree.innerHTML = '<div style="padding:10px;font-size:.78rem;color:var(--muted)">Kosong — upload file dulu</div>'; return; }
+  rootItems.forEach(el => tree.appendChild(el));
 }
 
-// ─── LOAD CONTENT ─────────────────────────────
-async function loadContent() {
-  const r = await apiFetch(`/servers/${SERVER_ID}/filetree`);
-  if (!r?.ok) return;
-  allFiles = flattenTree(r.data.tree);
-  renderContent(currentPath);
-}
-
-function flattenTree(node, result = []) {
-  if (!node.children) return result;
-  node.children.forEach(child => {
-    result.push(child);
-    if (child.type === 'folder') flattenTree(child, result);
-  });
-  return result;
-}
-
-function renderContent(path) {
-  currentPath = path;
+// ── Content ───────────────────────────────────────
+function renderContent() {
   selected.clear();
-  updateSelected();
+  updateSel();
 
   // Breadcrumb
-  const bc = document.getElementById('fm-breadcrumb');
-  const parts = path ? path.split('/').filter(Boolean) : [];
-  bc.innerHTML = `<span class="crumb" onclick="navTo('')">&#127968; root</span>`;
+  const bread = document.getElementById('fm-bread');
+  const parts  = curPath ? curPath.split('/') : [];
+  let html = `<span class="fm-crumb" data-path="">⌂ root</span>`;
   let built = '';
   parts.forEach((p, i) => {
     built += (built ? '/' : '') + p;
     const cp = built;
-    bc.innerHTML += `<span class="sep">&#9656;</span><span class="crumb" onclick="navTo('${escapeHtml(cp)}')">${escapeHtml(p)}</span>`;
+    const active = i === parts.length - 1 ? ' current' : '';
+    html += `<span class="fm-sep">›</span><span class="fm-crumb${active}" data-path="${esc(cp)}">${esc(p)}</span>`;
+  });
+  bread.innerHTML = html;
+  bread.querySelectorAll('.fm-crumb').forEach(el => {
+    el.addEventListener('click', () => navTo(el.dataset.path));
   });
 
-  // Get items in this path
-  const items = allFiles.filter(f => {
-    if (!path) {
-      // root level: no slash in path
-      return !f.path.includes('/') || (f.type === 'folder' && f.path.split('/').length === 1);
+  // Items in current path
+  const folders = new Set();
+  const files   = [];
+  allFiles.forEach(f => {
+    const parts2 = f.filePath.split('/');
+    const parent = parts2.slice(0, -1).join('/');
+    const depth  = curPath ? curPath.split('/').length : 0;
+
+    if (curPath === '') {
+      // root: show top-level folders and files
+      if (parts2.length === 1) files.push(f);
+      else if (parts2.length > 1) folders.add(parts2[0]);
+    } else {
+      if (!f.filePath.startsWith(curPath + '/')) return;
+      const rel   = f.filePath.slice(curPath.length + 1);
+      const rParts = rel.split('/');
+      if (rParts.length === 1) files.push(f);
+      else folders.add(curPath + '/' + rParts[0]);
     }
-    if (f.type === 'folder') {
-      return f.path === path || (f.path.startsWith(path + '/') && f.path.split('/').length === path.split('/').length + 1);
-    }
-    // files directly under this path
-    const parent = f.path.includes('/') ? f.path.substring(0, f.path.lastIndexOf('/')) : '';
-    return parent === path && f.name !== '.gitkeep';
   });
 
   const content = document.getElementById('fm-content');
-  if (!items.length) {
-    content.innerHTML = `<div class="empty-state"><div class="empty-icon">&#128193;</div><div class="empty-title">Folder kosong</div><div class="empty-sub">Upload file atau drag & drop ke sini</div></div>`;
-    document.getElementById('status-count').textContent = '0 item';
-    document.getElementById('status-path').textContent = '/' + path;
+  const total   = folders.size + files.length;
+  document.getElementById('status-count').textContent = `${total} item`;
+  document.getElementById('status-path').textContent = '/' + curPath;
+
+  if (!total) {
+    content.innerHTML = `<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <div class="empty-title">Folder kosong</div>
+      <div class="empty-sub">Upload file atau drag & drop ke sini</div>
+    </div>`;
     return;
   }
 
   const grid = document.createElement('div');
   grid.className = 'file-grid';
 
-  // Sort: folders first
-  const sorted = [...items].sort((a,b) => {
-    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-    return a.name.localeCompare(b.name);
+  // Render folders
+  [...folders].sort().forEach(fp => {
+    const name = fp.split('/').pop();
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.dataset.path = fp;
+    el.dataset.type = 'folder';
+    el.innerHTML = `
+      <div class="file-icon" style="background:rgba(245,158,11,.15);font-size:1.5rem;color:var(--warning)">📁</div>
+      <div class="file-name">${esc(name)}</div>
+      <div class="file-size">Folder</div>
+      <div class="file-check"></div>`;
+    el.addEventListener('click', e => { if (e.detail === 1) toggleSel(el, fp); });
+    el.addEventListener('dblclick', () => navTo(fp));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e, { type:'folder', path: fp, name }); });
+    grid.appendChild(el);
   });
 
-  sorted.forEach(item => {
-    if (item.name === '.gitkeep') return;
-    const div = document.createElement('div');
-    div.className = 'file-item' + (item.type === 'folder' ? ' folder-item' : '');
-    div.dataset.path = item.path;
-    div.dataset.type = item.type;
-    div.dataset.name = item.name;
-
-    if (item.type === 'folder') {
-      div.innerHTML = `<div class="fi-icon" style="background:rgba(245,158,11,.2);font-size:1.6rem;color:var(--warning)">&#128193;</div><div class="fi-name">${escapeHtml(item.name)}</div><div class="fi-size">Folder</div><div class="fi-check"></div>`;
-      div.addEventListener('dblclick', () => navTo(item.path));
-      div.addEventListener('click', e => toggleSelect(div, item.path));
-    } else {
-      const ic = getFileIconChar(item.mimeType, item.name);
-      div.innerHTML = `<div class="fi-icon" style="background:${ic.bg}">${ic.char}</div><div class="fi-name">${escapeHtml(item.name)}</div><div class="fi-size">${fmtSize(item.size)}</div><div class="fi-check"></div>`;
-      div.addEventListener('click', e => toggleSelect(div, item.path));
-      div.addEventListener('dblclick', () => previewOrEdit(item));
-    }
-
-    div.addEventListener('contextmenu', e => { e.preventDefault(); showContextMenu(e, item); });
-    grid.appendChild(div);
+  // Render files
+  files.forEach(f => {
+    const name = f.filePath.split('/').pop();
+    const ic   = fileIcon(name, f.mimeType);
+    const el   = document.createElement('div');
+    el.className = 'file-item';
+    el.dataset.path = f.filePath;
+    el.dataset.type = 'file';
+    el.innerHTML = `
+      <div class="file-icon" style="background:${ic.color}22;color:${ic.color}">${ic.label}</div>
+      <div class="file-name">${esc(name)}</div>
+      <div class="file-size">${fmtBytes(f.size)}</div>
+      <div class="file-check"></div>`;
+    el.addEventListener('click', () => toggleSel(el, f.filePath));
+    el.addEventListener('dblclick', () => openFile(f));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e, { type:'file', path: f.filePath, name, mime: f.mimeType }); });
+    grid.appendChild(el);
   });
 
   content.innerHTML = '';
   content.appendChild(grid);
-  document.getElementById('status-count').textContent = `${items.filter(i=>i.name!=='.gitkeep').length} item`;
-  document.getElementById('status-path').textContent = '/' + path;
+
+  // Drop zone if empty
+  setupDropZone();
 }
 
 function navTo(path) {
-  currentPath = path;
-  renderContent(path);
-  // Update tree active
-  document.querySelectorAll('.tree-row').forEach(r => r.classList.remove('active'));
+  curPath = path;
+  renderTree();
+  renderContent();
+  if (window.innerWidth <= 768) {
+    document.getElementById('fm-sidebar').classList.remove('open');
+    document.getElementById('fm-overlay').classList.remove('show');
+  }
 }
 
-// ─── SELECT ───────────────────────────────────
-function toggleSelect(el, path) {
-  if (selected.has(path)) { selected.delete(path); el.classList.remove('selected'); }
-  else { selected.add(path); el.classList.add('selected'); }
-  updateSelected();
+// ── Selection ─────────────────────────────────────
+function toggleSel(el, path) {
+  if (selected.has(path)) { selected.delete(path); el.classList.remove('sel'); }
+  else { selected.add(path); el.classList.add('sel'); }
+  updateSel();
 }
-
-function updateSelected() {
+function updateSel() {
   const n = selected.size;
-  const selEl = document.getElementById('status-selected');
-  const delBtn = document.getElementById('btn-delete-selected');
-  if (n > 0) { selEl.style.display='inline'; selEl.textContent = `${n} dipilih`; delBtn.style.display='inline-flex'; }
-  else { selEl.style.display='none'; delBtn.style.display='none'; }
+  const selEl = document.getElementById('status-sel');
+  const delBtn = document.getElementById('btn-del-sel');
+  if (n) { selEl.style.display = 'inline'; selEl.textContent = `${n} dipilih`; delBtn.style.display = 'inline-flex'; }
+  else   { selEl.style.display = 'none';   delBtn.style.display = 'none'; }
 }
 
-// ─── CONTEXT MENU ─────────────────────────────
-let ctxMenu = null;
-function showContextMenu(e, item) {
-  removeCtxMenu();
-  contextTarget = item;
+// ── Context menu ──────────────────────────────────
+function showCtx(e, item) {
+  removeCtx();
   const m = document.createElement('div');
-  m.className = 'ctx-menu';
-  const isText = item.mimeType && (item.mimeType.startsWith('text/') || item.mimeType.includes('javascript') || item.mimeType.includes('json'));
+  m.className = 'ctx';
+  const isEditable = item.type === 'file' && /text\/|javascript|json|xml|svg/.test(item.mime || '');
 
   m.innerHTML = `
-    ${item.type==='file' && isText ? `<div class="ctx-item" onclick="ctxEdit()"><span class="ctx-icon">&#9998;</span>Edit File</div>` : ''}
-    ${item.type==='file' ? `<div class="ctx-item" onclick="ctxDownload()"><span class="ctx-icon">&#8595;</span>Download</div>` : ''}
-    ${item.type==='file' ? `<div class="ctx-item" onclick="ctxPreview()"><span class="ctx-icon">&#128065;</span>Preview</div>` : ''}
-    <div class="ctx-item" onclick="ctxRename()"><span class="ctx-icon">&#9997;</span>Rename</div>
+    ${item.type === 'file' && isEditable ? `<div class="ctx-row" id="cx-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</div>` : ''}
+    ${item.type === 'file' ? `<div class="ctx-row" id="cx-dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</div>` : ''}
+    ${item.type === 'file' ? `<div class="ctx-row" id="cx-prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Preview</div>` : ''}
+    <div class="ctx-row" id="cx-ren"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Rename</div>
     <div class="ctx-sep"></div>
-    <div class="ctx-item danger" onclick="ctxDelete()"><span class="ctx-icon">&#128465;</span>Hapus</div>`;
+    <div class="ctx-row red" id="cx-del"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Hapus</div>`;
 
   document.body.appendChild(m);
   ctxMenu = m;
 
-  // Position
-  const mx = Math.min(e.clientX, window.innerWidth - 200);
-  const my = Math.min(e.clientY, window.innerHeight - m.offsetHeight - 10);
+  const mx = Math.min(e.clientX, innerWidth - 190);
+  const my = Math.min(e.clientY, innerHeight - m.scrollHeight - 10);
   m.style.left = mx + 'px';
-  m.style.top = my + 'px';
+  m.style.top  = my + 'px';
 
-  setTimeout(() => document.addEventListener('click', removeCtxMenu, { once: true }), 0);
+  m.querySelector('#cx-edit')?.addEventListener('click', () => { removeCtx(); editFile(item); });
+  m.querySelector('#cx-dl')?.addEventListener('click',   () => { removeCtx(); dlFile(item); });
+  m.querySelector('#cx-prev')?.addEventListener('click', () => { removeCtx(); previewFile(item); });
+  m.querySelector('#cx-ren')?.addEventListener('click',  () => { removeCtx(); renameItem(item); });
+  m.querySelector('#cx-del')?.addEventListener('click',  () => { removeCtx(); deleteItem(item); });
+
+  setTimeout(() => document.addEventListener('click', removeCtx, { once: true }), 50);
 }
-function removeCtxMenu() { ctxMenu?.remove(); ctxMenu = null; }
+function removeCtx() { ctxMenu?.remove(); ctxMenu = null; }
 
-async function ctxEdit() {
-  removeCtxMenu();
-  const r = await apiFetch(`/files/view/${SERVER_ID}?path=${encodeURIComponent(contextTarget.path)}`);
-  if (!r?.ok) return toast(r?.data?.message || 'Gagal membuka file.', 'error');
+// ── File actions ──────────────────────────────────
+async function editFile(item) {
+  const d = await api(`/file/content/${SRV_ID}?path=${encodeURIComponent(item.path)}`);
+  if (!d?.ok) return toast(d?.msg || 'Gagal membaca file.', 'err');
 
-  const { overlay, close } = showModal({
-    title: `Edit: ${contextTarget.name}`,
-    body: `<textarea class="editor-area" id="editor-content">${escapeHtml(r.data.content)}</textarea>`,
-    confirmText: 'Simpan',
-    wide: true,
-    onConfirm: async (_, closeM) => {
-      const content = document.getElementById('editor-content').value;
-      const sr = await apiFetch(`/files/edit/${SERVER_ID}`, { method:'PUT', body: JSON.stringify({ filePath: contextTarget.path, content }) });
-      if (sr?.ok) { toast('File berhasil disimpan.','success'); closeM(); refreshAll(); }
-      else toast(sr?.data?.message || 'Gagal simpan.','error');
+  modal({
+    title: `Edit: ${item.name}`,
+    body: `<textarea class="input" id="editor" style="height:320px;font-family:monospace;font-size:.82rem;line-height:1.6;resize:vertical">${esc(d.content)}</textarea>`,
+    ok: 'Simpan', wide: true,
+    onOk: async (el, close) => {
+      const content = document.getElementById('editor').value;
+      const r = await api(`/file/save/${SRV_ID}`, { method:'PUT', body:{ filePath: item.path, content } });
+      if (r?.ok) { toast('Disimpan!', 'ok'); close(); load(); }
+      else toast(r?.msg || 'Gagal simpan.', 'err');
     }
   });
 }
 
-async function ctxDownload() {
-  removeCtxMenu();
-  window.open(`${API}/files/download/${SERVER_ID}?path=${encodeURIComponent(contextTarget.path)}`, '_blank');
+function dlFile(item) {
+  window.open(`/api/file/download/${SRV_ID}?path=${encodeURIComponent(item.path)}`, '_blank');
 }
 
-function ctxPreview() {
-  removeCtxMenu();
-  const url = `${BASE_URL}/s/${SERVER_NAME}/${contextTarget.path}`;
-  window.open(url, '_blank');
+function previewFile(item) {
+  window.open(`${location.origin}/s/${SRV_NAME}/${item.path}`, '_blank');
 }
 
-async function ctxRename() {
-  removeCtxMenu();
-  const { overlay, close } = showModal({
+async function openFile(f) {
+  const name = f.filePath.split('/').pop();
+  const isEditable = /text\/|javascript|json|xml|svg/.test(f.mimeType || '');
+  const isImage = (f.mimeType || '').startsWith('image/');
+  if (isImage) {
+    const url = `${location.origin}/s/${SRV_NAME}/${f.filePath}`;
+    modal({ title: name, body: `<img src="${url}" style="max-width:100%;border-radius:8px;display:block;margin:0 auto" onerror="this.parentNode.innerHTML='Gagal memuat gambar'">`, ok:'', cancel:'Tutup' });
+  } else if (isEditable) {
+    editFile({ path: f.filePath, name, mime: f.mimeType });
+  } else {
+    dlFile({ path: f.filePath });
+  }
+}
+
+async function renameItem(item) {
+  const { bg, close: closeM } = modal({
     title: 'Rename',
-    body: `<div class="input-group"><label>Nama baru</label><input type="text" id="rename-input" value="${escapeHtml(contextTarget.name)}" maxlength="100"></div>`,
-    confirmText: 'Simpan',
-    onConfirm: async (_, closeM) => {
-      const newName = document.getElementById('rename-input').value.trim();
-      if (!newName) return toast('Nama tidak boleh kosong.','error');
-      const r = await apiFetch(`/files/rename/${SERVER_ID}`, { method:'PUT', body: JSON.stringify({ oldPath: contextTarget.path, newName }) });
-      if (r?.ok) { toast('Berhasil di-rename.','success'); closeM(); refreshAll(); }
-      else toast(r?.data?.message || 'Gagal rename.','error');
+    body: `<div class="field"><label>Nama baru</label><input class="input" id="new-name" value="${esc(item.name)}" maxlength="100"></div>`,
+    ok: 'Simpan',
+    onOk: async (_, cl) => {
+      const newName = document.getElementById('new-name').value.trim();
+      if (!newName) return toast('Nama tidak boleh kosong.', 'err');
+      const r = await api(`/file/rename/${SRV_ID}`, { method:'PUT', body:{ oldPath: item.path, newName } });
+      if (r?.ok) { toast('Berhasil rename.', 'ok'); cl(); load(); }
+      else toast(r?.msg || 'Gagal.', 'err');
     }
   });
-  setTimeout(() => { const inp = overlay.querySelector('#rename-input'); inp?.focus(); inp?.select(); }, 100);
+  setTimeout(() => { const inp = document.getElementById('new-name'); inp?.focus(); inp?.select(); }, 100);
 }
 
-async function ctxDelete() {
-  removeCtxMenu();
-  const item = contextTarget;
-  confirmModal('Hapus', `Hapus "${item.name}"?`, async () => {
+async function deleteItem(item) {
+  confirm('Hapus', `Hapus "${item.name}"?`, async () => {
     let r;
-    if (item.type === 'folder') {
-      r = await apiFetch(`/files/folder/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ folderPath: item.path }) });
-    } else {
-      r = await apiFetch(`/files/file/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ filePath: item.path }) });
-    }
-    if (r?.ok) { toast('Berhasil dihapus.','success'); refreshAll(); }
-    else toast(r?.data?.message || 'Gagal hapus.','error');
+    if (item.type === 'folder') r = await api(`/file/delete-folder/${SRV_ID}`, { method:'DELETE', body:{ folderPath: item.path } });
+    else r = await api(`/file/delete/${SRV_ID}`, { method:'DELETE', body:{ filePath: item.path } });
+    if (r?.ok) { toast('Dihapus.', 'ok'); load(); }
+    else toast(r?.msg || 'Gagal.', 'err');
   }, true);
 }
 
-// ─── UPLOAD ───────────────────────────────────
-function setupDrop() {
-  const main = document.getElementById('fm-main');
-  const overlay = document.getElementById('drop-overlay');
+// ── Upload ────────────────────────────────────────
+async function uploadFiles(files) {
+  const area = document.getElementById('upload-area');
+  const list = document.getElementById('upload-list');
+  area.style.display = 'block';
+  list.innerHTML = '';
 
-  main.addEventListener('dragover', e => { e.preventDefault(); overlay.classList.add('active'); });
-  main.addEventListener('dragleave', e => { if (!main.contains(e.relatedTarget)) overlay.classList.remove('active'); });
-  main.addEventListener('drop', async e => {
+  for (const f of files) {
+    const row = document.createElement('div');
+    row.className = 'upload-item';
+    row.innerHTML = `<span class="fname">${esc(f.name)}</span><span class="fsize">${fmtBytes(f.size)}</span><div class="prog-bar" style="width:80px;flex-shrink:0"><div class="prog-fill" style="width:10%"></div></div><span class="fstat">...</span>`;
+    list.appendChild(row);
+    const bar  = row.querySelector('.prog-fill');
+    const stat = row.querySelector('.fstat');
+
+    try {
+      const fd = new FormData();
+      fd.append('files', f);
+      fd.append('folder', curPath);
+
+      bar.style.width = '40%';
+      const res  = await fetch(`/api/file/upload/${SRV_ID}`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + Store.token() },
+        body: fd
+      });
+      const data = await res.json().catch(() => ({}));
+      bar.style.width = '100%';
+
+      if (data.ok) {
+        bar.style.background = 'var(--success)';
+        stat.textContent = '✓';
+        stat.className = 'fstat ok';
+      } else {
+        bar.style.background = 'var(--danger)';
+        stat.textContent = '✕';
+        stat.className = 'fstat err';
+        toast(data.msg || `Gagal upload ${f.name}`, 'err');
+      }
+    } catch (_) {
+      bar.style.background = 'var(--danger)';
+      stat.textContent = '✕';
+      stat.className = 'fstat err';
+    }
+  }
+
+  await load();
+  setTimeout(() => { area.style.display = 'none'; list.innerHTML = ''; }, 3000);
+}
+
+function setupDropZone() {
+  const content = document.getElementById('fm-content');
+  content.addEventListener('dragover', e => { e.preventDefault(); content.style.background = 'var(--primary-l)'; });
+  content.addEventListener('dragleave', () => { content.style.background = ''; });
+  content.addEventListener('drop', e => {
     e.preventDefault();
-    overlay.classList.remove('active');
+    content.style.background = '';
     const files = [...e.dataTransfer.files];
     if (files.length) uploadFiles(files);
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('btn-upload').addEventListener('click', () => document.getElementById('file-input').click());
-  document.getElementById('file-input').addEventListener('change', e => { if (e.target.files.length) uploadFiles([...e.target.files]); e.target.value=''; });
-  document.getElementById('btn-refresh-tree').addEventListener('click', refreshAll);
-  document.getElementById('btn-download-all').addEventListener('click', () => window.open(`${API}/files/download-all/${SERVER_ID}`, '_blank'));
-
-  document.getElementById('btn-newfolder').addEventListener('click', () => {
-    showModal({
-      title: 'Buat Folder Baru',
-      body: `<div class="input-group"><label>Nama Folder</label><input type="text" id="folder-name-inp" placeholder="nama-folder" maxlength="50"></div>`,
-      confirmText: 'Buat',
-      onConfirm: async (_, close) => {
-        const name = document.getElementById('folder-name-inp').value.trim().replace(/[^a-zA-Z0-9\-_]/g,'_');
-        if (!name) return toast('Nama folder kosong.','error');
-        const fullPath = currentPath ? `${currentPath}/${name}` : name;
-        const r = await apiFetch(`/files/newfolder/${SERVER_ID}`, { method:'POST', body: JSON.stringify({ folderPath: fullPath }) });
-        if (r?.ok) { toast('Folder dibuat.','success'); close(); refreshAll(); }
-        else toast(r?.data?.message || 'Gagal.','error');
-      }
-    });
-  });
-
-  document.getElementById('btn-delete-selected').addEventListener('click', () => {
-    if (!selected.size) return;
-    confirmModal('Hapus Item', `Hapus ${selected.size} item yang dipilih?`, async () => {
-      for (const path of selected) {
-        const item = allFiles.find(f => f.path === path);
-        if (!item) continue;
-        if (item.type === 'folder') await apiFetch(`/files/folder/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ folderPath: path }) });
-        else await apiFetch(`/files/file/${SERVER_ID}`, { method:'DELETE', body: JSON.stringify({ filePath: path }) });
-      }
-      toast('Item berhasil dihapus.','success');
-      refreshAll();
-    }, true);
-  });
-
-  init();
+// ── Toolbar actions ───────────────────────────────
+document.getElementById('btn-upload').addEventListener('click', () => document.getElementById('file-input').click());
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files.length) uploadFiles([...e.target.files]);
+  e.target.value = '';
 });
 
-async function uploadFiles(files) {
-  const progressWrap = document.getElementById('upload-progress');
-  progressWrap.style.display = 'block';
-  progressWrap.innerHTML = '';
+document.getElementById('btn-refresh').addEventListener('click', load);
 
-  for (const file of files) {
-    const row = document.createElement('div');
-    row.className = 'upload-row';
-    row.innerHTML = `<span class="uf">${escapeHtml(file.name)}</span><span class="us">${fmtSize(file.size)}</span><div class="prog"><div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div></div><span class="us ok">&#8593;</span>`;
-    progressWrap.appendChild(row);
-    const fill = row.querySelector('.progress-fill');
-    const status = row.querySelector('.us.ok');
+document.getElementById('btn-dl-all').addEventListener('click', () => {
+  window.open(`/api/file/download-all/${SRV_ID}`, '_blank');
+});
 
-    try {
-      // Simulate progress
-      fill.style.width = '30%';
-      const fd = new FormData();
-      fd.append('files', file);
-      fd.append('folderPath', currentPath);
-      fill.style.width = '60%';
-
-      const token = getToken();
-      const res = await fetch(`${API}/files/upload/${SERVER_ID}`, {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + token },
-        body: fd
-      });
-      const data = await res.json();
-      fill.style.width = '100%';
-
-      if (res.ok) {
-        fill.style.background = 'var(--success)';
-        status.textContent = '✓';
-        status.style.color = 'var(--success)';
-      } else {
-        fill.style.background = 'var(--danger)';
-        status.textContent = '✕';
-        status.style.color = 'var(--danger)';
-        toast(data.message || 'Gagal upload: ' + file.name, 'error');
-      }
-    } catch {
-      fill.style.background = 'var(--danger)';
+document.getElementById('btn-mkdir').addEventListener('click', () => {
+  modal({
+    title: 'Buat Folder Baru',
+    body: `<div class="field"><label>Nama Folder</label><input class="input" id="folder-name" placeholder="nama-folder" maxlength="50"></div>`,
+    ok: 'Buat',
+    onOk: async (_, close) => {
+      const name = document.getElementById('folder-name').value.trim().replace(/[^a-zA-Z0-9\-_]/g,'_');
+      if (!name) return toast('Nama folder kosong.', 'err');
+      const fp = curPath ? `${curPath}/${name}` : name;
+      const r = await api(`/file/mkdir/${SRV_ID}`, { method:'POST', body:{ folderPath: fp } });
+      if (r?.ok) { toast('Folder dibuat.', 'ok'); close(); load(); }
+      else toast(r?.msg || 'Gagal.', 'err');
     }
-  }
-
-  await refreshAll();
-  setTimeout(() => { progressWrap.style.display = 'none'; progressWrap.innerHTML = ''; }, 3000);
-}
-
-function previewOrEdit(item) {
-  const textTypes = ['text/html','text/css','application/javascript','application/json','text/plain','text/markdown','image/svg+xml'];
-  const isEditable = textTypes.some(t => item.mimeType?.includes(t.split('/')[1]));
-  const isImage = item.mimeType?.startsWith('image/');
-
-  if (isImage) {
-    const url = `${BASE_URL}/s/${SERVER_NAME}/${item.path}`;
-    showModal({ title: item.name, body: `<img src="${url}" style="max-width:100%;border-radius:8px" onerror="this.alt='Gagal load'">`, confirmText:'', cancelText:'Tutup' });
-  } else if (isEditable) {
-    contextTarget = item;
-    ctxEdit();
-  } else {
-    ctxDownload();
-  }
-}
-
-function getFileIconChar(mimeType, name) {
-  const ext = (name || '').split('.').pop().toLowerCase();
-  const map = {
-    'html':{ char:'HTML', color:'#e34c26', bg:'rgba(227,76,38,.25)' },
-    'htm':{ char:'HTML', color:'#e34c26', bg:'rgba(227,76,38,.25)' },
-    'css':{ char:'CSS', color:'#264de4', bg:'rgba(38,77,228,.25)' },
-    'js':{ char:'JS', color:'#f0db4f', bg:'rgba(240,219,79,.2)' },
-    'json':{ char:'{ }', color:'#89d96d', bg:'rgba(137,217,109,.2)' },
-    'png':{ char:'PNG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
-    'jpg':{ char:'JPG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
-    'jpeg':{ char:'JPG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
-    'gif':{ char:'GIF', color:'#9c27b0', bg:'rgba(156,39,176,.2)' },
-    'webp':{ char:'IMG', color:'#4dd0e1', bg:'rgba(77,208,225,.2)' },
-    'svg':{ char:'SVG', color:'#ff9800', bg:'rgba(255,152,0,.2)' },
-    'mp3':{ char:'MP3', color:'#e91e63', bg:'rgba(233,30,99,.2)' },
-    'mp4':{ char:'MP4', color:'#2196f3', bg:'rgba(33,150,243,.2)' },
-    'zip':{ char:'ZIP', color:'#ff9800', bg:'rgba(255,152,0,.2)' },
-    'pdf':{ char:'PDF', color:'#f44336', bg:'rgba(244,67,54,.2)' },
-    'md':{ char:'MD', color:'#607d8b', bg:'rgba(96,125,139,.2)' },
-    'txt':{ char:'TXT', color:'#90a4ae', bg:'rgba(144,164,174,.2)' },
-    'ico':{ char:'ICO', color:'#ffd700', bg:'rgba(255,215,0,.2)' },
-    'ttf':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
-    'woff':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
-    'woff2':{ char:'FONT', color:'#ab47bc', bg:'rgba(171,71,188,.2)' },
-  };
-  return map[ext] || { char: ext.toUpperCase().substring(0,3) || 'BIN', color:'#7eb8d4', bg:'rgba(126,184,212,.15)' };
-}
-
-function showModal({ title, body, confirmText = 'OK', confirmClass = 'btn-primary', onConfirm, cancelText = 'Batal', wide = false }) {
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" ${wide ? 'style="max-width:700px"' : ''}>
-      <div class="modal-header">
-        <div class="modal-title">${escapeHtml(title)}</div>
-        <button class="modal-close">&times;</button>
-      </div>
-      <div class="modal-body">${body}</div>
-      <div class="modal-footer">
-        ${cancelText ? `<button class="btn btn-ghost btn-cancel">${escapeHtml(cancelText)}</button>` : ''}
-        ${confirmText ? `<button class="btn ${confirmClass} btn-confirm">${escapeHtml(confirmText)}</button>` : ''}
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const close = () => overlay.remove();
-  overlay.querySelector('.modal-close')?.addEventListener('click', close);
-  overlay.querySelector('.btn-cancel')?.addEventListener('click', close);
-  overlay.querySelector('.btn-confirm')?.addEventListener('click', async () => {
-    if (onConfirm) await onConfirm(overlay, close);
-    else close();
   });
-  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
-  return { overlay, close };
-}
+});
 
-function confirmModal(title, msg, onYes, danger = false) {
-  return showModal({ title, body: `<p style="color:var(--muted)">${escapeHtml(msg)}</p>`, confirmText: 'Ya, lanjutkan', confirmClass: danger ? 'btn-danger' : 'btn-primary', onConfirm: async (_, close) => { await onYes(); close(); } });
-}
+document.getElementById('btn-del-sel').addEventListener('click', () => {
+  if (!selected.size) return;
+  confirm('Hapus Pilihan', `Hapus ${selected.size} item yang dipilih?`, async () => {
+    for (const path of selected) {
+      const item = allFiles.find(f => f.filePath === path);
+      if (item) await api(`/file/delete/${SRV_ID}`, { method:'DELETE', body:{ filePath: path } });
+      else await api(`/file/delete-folder/${SRV_ID}`, { method:'DELETE', body:{ folderPath: path } });
+    }
+    toast('Item dihapus.', 'ok');
+    load();
+  }, true);
+});
 
-function copySrvUrl() { copyText(`${BASE_URL}/s/${SERVER_NAME}/`); }
+// ── Init ──────────────────────────────────────────
+load();
 </script>
 </body>
 </html>
