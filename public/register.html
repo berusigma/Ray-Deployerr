@@ -2,245 +2,245 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Daftar — Ray App</title>
-<link rel="stylesheet" href="/assets/css/style.css">
-<style>
-.auth-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:80px 16px 40px; }
-.auth-box { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:36px 32px; width:100%; max-width:440px; }
-.auth-logo { text-align:center; margin-bottom:28px; }
-.auth-logo .logo-icon { width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--glow),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 12px; }
-.auth-logo h1 { font-size:1.4rem;font-weight:800;color:var(--wave); }
-.auth-logo p { font-size:.82rem;color:var(--muted);margin-top:4px; }
-.form-stack { display:flex;flex-direction:column;gap:16px; }
-.strength-bar { height:3px;border-radius:2px;background:var(--border);margin-top:6px;overflow:hidden; }
-.strength-fill { height:100%;border-radius:2px;transition:width .3s,background .3s; }
-.captcha-box { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px; }
-.captcha-label { font-size:.82rem;color:var(--muted);margin-bottom:8px; }
-.captcha-target { display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:1rem; }
-.captcha-target .emoji-big { font-size:2rem; }
-.captcha-refresh { background:none;border:none;color:var(--accent);cursor:pointer;font-size:.8rem;margin-left:auto;padding:4px 8px;border-radius:6px; }
-.captcha-refresh:hover { background:var(--card); }
-.captcha-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:8px; }
-.captcha-cell { aspect-ratio:1;border-radius:10px;border:2px solid var(--border);background:var(--dark);display:flex;align-items:center;justify-content:center;font-size:1.5rem;cursor:pointer;transition:all .15s;user-select:none; }
-.captcha-cell:hover { border-color:var(--accent);background:rgba(14,165,233,.08); }
-.captcha-cell.selected { border-color:var(--accent2);background:rgba(6,182,212,.15);transform:scale(1.05); }
-.captcha-cell.wrong { border-color:var(--danger);animation:shake .3s; }
-.captcha-selected-count { font-size:.78rem;color:var(--muted);text-align:center;margin-top:6px; }
-.divider { border:none;border-top:1px solid var(--border);margin:8px 0; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<nav class="navbar" id="navbar"></nav>
-<div id="toast-container"></div>
+<nav class="nav" id="nav"></nav>
+<div id="toasts"></div>
 
-<div class="auth-wrap">
+<div class="auth-page">
   <div class="auth-box">
     <div class="auth-logo">
-      <div class="logo-icon">~</div>
-      <h1>Ray App</h1>
-      <p>Buat akun gratis, hosting HTML kamu</p>
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2 L2 7 L12 12 L22 7 Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 17 L12 22 L22 17" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12 L12 17 L22 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2 style="font-size:1.25rem;margin-top:8px">Buat Akun Ray App</h2>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:4px">Gratis selamanya, tidak perlu kartu kredit</p>
     </div>
 
-    <div class="form-stack" id="register-form">
-      <!-- Username -->
-      <div class="input-group">
+    <div id="err-box" style="display:none"></div>
+
+    <div class="auth-form">
+      <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" placeholder="contoh: rayuser123" maxlength="20" autocomplete="username">
-        <div style="font-size:.73rem;color:var(--subtle);margin-top:3px">3-20 karakter, huruf kecil, angka, underscore</div>
+        <input class="input" type="text" id="username" placeholder="contoh: rayuser123" maxlength="20" autocomplete="username" spellcheck="false">
+        <span style="font-size:.72rem;color:var(--subtle)">3–20 karakter, huruf kecil, angka, underscore</span>
       </div>
 
-      <!-- Password -->
-      <div class="input-group">
+      <div class="field">
         <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Minimal 6 karakter" autocomplete="new-password">
-        <div class="strength-bar"><div class="strength-fill" id="strength-bar" style="width:0%"></div></div>
-        <div style="font-size:.72rem;color:var(--subtle);margin-top:2px" id="strength-text"></div>
+        <div style="position:relative">
+          <input class="input" type="password" id="password" placeholder="Minimal 6 karakter" autocomplete="new-password" style="padding-right:42px">
+          <button type="button" id="eye" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem" title="Tampilkan">&#128065;</button>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:4px;overflow:hidden">
+          <div id="pw-bar" style="height:100%;width:0;border-radius:2px;transition:width .2s,background .2s"></div>
+        </div>
       </div>
 
-      <!-- Confirm Password -->
-      <div class="input-group">
-        <label for="password2">Konfirmasi Password</label>
-        <input type="password" id="password2" placeholder="Ulangi password" autocomplete="new-password">
+      <div class="field">
+        <label for="password2">Ulangi Password</label>
+        <input class="input" type="password" id="password2" placeholder="Ketik ulang password" autocomplete="new-password">
       </div>
-
-      <hr class="divider">
 
       <!-- EMOJI CAPTCHA -->
-      <div class="captcha-box">
-        <div class="captcha-label">Verifikasi Anti-Bot</div>
-        <div class="captcha-target">
-          <span>Pilih SEMUA emoji</span>
-          <span class="emoji-big" id="captcha-target-emoji">...</span>
-          <span>yang ada di grid</span>
-          <button class="captcha-refresh" id="captcha-refresh" type="button">&#8635; Refresh</button>
-        </div>
+      <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r);padding:14px">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text2);margin-bottom:8px">Verifikasi Anti-Bot</div>
+        <div id="captcha-prompt" style="font-size:.82rem;color:var(--muted);text-align:center;padding:8px;min-height:32px">Memuat...</div>
         <div class="captcha-grid" id="captcha-grid"></div>
-        <div class="captcha-selected-count" id="captcha-hint">Klik semua emoji yang cocok</div>
+        <div id="captcha-status" style="font-size:.75rem;text-align:center;margin-top:6px;min-height:18px;color:var(--muted)">Pilih semua emoji yang sama</div>
+        <button type="button" id="captcha-refresh" class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;font-size:.75rem">↺ Muat Ulang Captcha</button>
       </div>
 
-      <!-- Terms -->
-      <div style="display:flex;align-items:flex-start;gap:10px;font-size:.8rem;color:var(--muted)">
-        <input type="checkbox" id="terms" style="width:auto;margin-top:2px">
-        <label for="terms">Saya setuju dengan syarat penggunaan. Server yang tidak aktif 7 hari akan otomatis dihapus.</label>
+      <div style="display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--muted)">
+        <input type="checkbox" id="terms" style="margin-top:2px;accent-color:var(--primary)">
+        <label for="terms">Saya setuju. Server tidak aktif 7 hari akan otomatis dihapus.</label>
       </div>
 
-      <button class="btn btn-primary" id="btn-register" style="width:100%;justify-content:center;padding:13px">
-        Daftar Sekarang
-      </button>
+      <button class="btn btn-primary" id="btn-reg" style="width:100%;padding:12px;font-size:.95rem">Daftar Sekarang</button>
 
-      <div style="text-align:center;font-size:.85rem;color:var(--muted)">
+      <p style="text-align:center;font-size:.85rem;color:var(--muted)">
         Sudah punya akun? <a href="/login">Masuk di sini</a>
-      </div>
+      </p>
     </div>
   </div>
 </div>
 
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 <script>
-renderNavbar();
-if (getToken()) window.location.href = '/dashboard';
+buildNav('register');
+if (Store.token()) location.href = '/dashboard';
 
-let captchaToken = null;
-let captchaAnswer = null; // target emoji id
-let selectedCells = []; // indices selected
+// ── State ─────────────────────────────────────────
+let captchaToken  = null;  // JWT dari server
+let captchaTarget = null;  // id emoji yang benar
+let selectedIds   = [];    // id-id yang dipilih user
 
-// ─── LOAD CAPTCHA ─────────────────────────────
+// ── Load captcha ──────────────────────────────────
 async function loadCaptcha() {
-  selectedCells = [];
-  captchaToken = null;
-  captchaAnswer = null;
-  document.getElementById('captcha-hint').textContent = 'Klik semua emoji yang cocok';
-  document.getElementById('captcha-hint').style.color = '';
-  document.getElementById('captcha-target-emoji').textContent = '...';
-  document.getElementById('captcha-grid').innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted);font-size:.82rem">Memuat...</div>';
+  captchaToken  = null;
+  captchaTarget = null;
+  selectedIds   = [];
 
-  try {
-    const res = await fetch('/api/auth/captcha');
-    if (!res.ok) throw new Error('Server error ' + res.status);
-    const data = await res.json();
-    if (!data.grid || !data.captchaToken) throw new Error('Data captcha tidak valid');
+  const grid = document.getElementById('captcha-grid');
+  const prompt = document.getElementById('captcha-prompt');
+  const status = document.getElementById('captcha-status');
 
-    captchaToken = data.captchaToken;
-    document.getElementById('captcha-target-emoji').textContent = data.targetSymbol;
+  grid.innerHTML = '';
+  prompt.textContent = 'Memuat...';
+  status.textContent = '';
+  status.style.color = 'var(--muted)';
 
-    const grid = document.getElementById('captcha-grid');
-    grid.innerHTML = '';
-    data.grid.forEach((item, i) => {
-      const cell = document.createElement('div');
-      cell.className = 'captcha-cell';
-      cell.textContent = item.symbol;
-      cell.dataset.id = item.id;
-      cell.dataset.idx = i;
-      cell.addEventListener('click', () => toggleCell(cell, item.id));
-      grid.appendChild(cell);
-    });
-  } catch (e) {
-    document.getElementById('captcha-grid').innerHTML = '<div style="text-align:center;padding:10px;color:var(--danger);font-size:.82rem">Gagal memuat captcha. Klik refresh.</div>';
-    document.getElementById('captcha-target-emoji').textContent = '?';
-    console.error('Captcha load error:', e);
+  const data = await api('/auth/captcha');
+  if (!data || !data.ok) {
+    prompt.textContent = 'Gagal memuat captcha.';
+    return;
   }
+
+  captchaToken  = data.token;
+  captchaTarget = null; // akan diisi dari captchaToken JWT saat submit
+  prompt.innerHTML = `Pilih <strong>semua</strong> emoji <span style="font-size:1.4rem;vertical-align:middle">${data.target}</span> yang ada di kotak bawah`;
+
+  grid.innerHTML = '';
+  data.grid.forEach(item => {
+    const cell = document.createElement('button');
+    cell.type = 'button';
+    cell.className = 'captcha-cell';
+    cell.textContent = item.e;
+    cell.dataset.id = item.id;
+    cell.addEventListener('click', () => toggleCell(cell, item.id));
+    grid.appendChild(cell);
+  });
+  status.textContent = 'Pilih semua emoji yang cocok';
 }
 
 function toggleCell(cell, id) {
-  const idx = parseInt(cell.dataset.idx);
+  cell.classList.toggle('selected');
   if (cell.classList.contains('selected')) {
-    cell.classList.remove('selected');
-    selectedCells = selectedCells.filter(i => i !== idx);
+    selectedIds.push(id);
   } else {
-    cell.classList.add('selected');
-    selectedCells.push(idx);
+    selectedIds = selectedIds.filter(x => x !== id);
   }
-  const count = selectedCells.length;
-  document.getElementById('captcha-hint').textContent = count > 0 ? `${count} emoji dipilih` : 'Klik semua emoji yang cocok';
 
-  // Valid answer: all selected cells share same id, and at least 2 selected
-  const cells = document.querySelectorAll('.captcha-cell.selected');
-  const ids = [...cells].map(c => c.dataset.id);
-  if (ids.length >= 2 && ids.every(i => i === ids[0])) {
-    captchaAnswer = ids[0];
-    document.getElementById('captcha-hint').textContent = '✓ Pilihan cocok! Lanjutkan daftar.';
-    document.getElementById('captcha-hint').style.color = 'var(--success)';
+  // Validasi: semua yang dipilih harus id yang sama, minimal 2
+  const status = document.getElementById('captcha-status');
+  const allSame = selectedIds.length >= 2 && selectedIds.every(x => x === selectedIds[0]);
+  const hasDiff = selectedIds.some(x => x !== selectedIds[0]);
+
+  if (selectedIds.length === 0) {
+    status.textContent = 'Pilih semua emoji yang cocok';
+    status.style.color = 'var(--muted)';
+  } else if (hasDiff) {
+    status.textContent = 'Pilihan berbeda — hanya pilih yang sama';
+    status.style.color = 'var(--danger)';
+  } else if (allSame) {
+    status.textContent = '✓ Pilihan cocok! Lanjutkan daftar.';
+    status.style.color = 'var(--success)';
   } else {
-    captchaAnswer = null;
-    document.getElementById('captcha-hint').style.color = '';
-    document.getElementById('captcha-hint').textContent = count > 0 ? `${count} emoji dipilih — pilih semua yang sama` : 'Klik semua emoji yang cocok';
+    status.textContent = `${selectedIds.length} dipilih — mungkin masih ada lagi?`;
+    status.style.color = 'var(--warning)';
   }
 }
 
-document.getElementById('captcha-refresh').addEventListener('click', loadCaptcha);
-loadCaptcha();
+function getCaptchaAnswer() {
+  if (selectedIds.length < 2) return null;
+  if (!selectedIds.every(x => x === selectedIds[0])) return null;
+  return selectedIds[0];
+}
 
-// ─── PASSWORD STRENGTH ────────────────────────
+// ── Password strength ─────────────────────────────
 document.getElementById('password').addEventListener('input', function() {
   const v = this.value;
-  let score = 0;
-  if (v.length >= 6) score++;
-  if (v.length >= 10) score++;
-  if (/[A-Z]/.test(v)) score++;
-  if (/[0-9]/.test(v)) score++;
-  if (/[^a-zA-Z0-9]/.test(v)) score++;
-
-  const bar = document.getElementById('strength-bar');
-  const text = document.getElementById('strength-text');
-  const pct = (score / 5 * 100) + '%';
-  bar.style.width = pct;
-  if (score <= 1) { bar.style.background = 'var(--danger)'; text.textContent = 'Lemah'; text.style.color = 'var(--danger)'; }
-  else if (score <= 3) { bar.style.background = 'var(--warning)'; text.textContent = 'Sedang'; text.style.color = 'var(--warning)'; }
-  else { bar.style.background = 'var(--success)'; text.textContent = 'Kuat'; text.style.color = 'var(--success)'; }
+  let s = 0;
+  if (v.length >= 6) s++;
+  if (v.length >= 10) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^a-zA-Z0-9]/.test(v)) s++;
+  const bar = document.getElementById('pw-bar');
+  const pct = (s / 5) * 100;
+  bar.style.width = pct + '%';
+  bar.style.background = s <= 1 ? 'var(--danger)' : s <= 3 ? 'var(--warning)' : 'var(--success)';
 });
 
-// ─── REGISTER ─────────────────────────────────
-document.getElementById('btn-register').addEventListener('click', async () => {
-  const username = document.getElementById('username').value.trim().toLowerCase();
-  const password = document.getElementById('password').value;
+// ── Toggle password visibility ────────────────────
+document.getElementById('eye').addEventListener('click', function() {
+  const pw = document.getElementById('password');
+  pw.type = pw.type === 'password' ? 'text' : 'password';
+  this.style.color = pw.type === 'text' ? 'var(--primary)' : 'var(--muted)';
+});
+
+// ── Refresh captcha ───────────────────────────────
+document.getElementById('captcha-refresh').addEventListener('click', loadCaptcha);
+
+// ── Show error ────────────────────────────────────
+function showErr(msg) {
+  const el = document.getElementById('err-box');
+  el.className = 'alert alert-red';
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function clearErr() {
+  const el = document.getElementById('err-box');
+  el.style.display = 'none';
+}
+
+// ── Register ──────────────────────────────────────
+async function doRegister() {
+  clearErr();
+  const username  = document.getElementById('username').value.trim().toLowerCase();
+  const password  = document.getElementById('password').value;
   const password2 = document.getElementById('password2').value;
-  const terms = document.getElementById('terms').checked;
+  const terms     = document.getElementById('terms').checked;
 
-  if (!username) return toast('Username wajib diisi.', 'error');
-  if (!/^[a-z0-9_]{3,20}$/.test(username)) return toast('Username: 3-20 karakter, huruf kecil/angka/underscore.', 'error');
-  if (!password) return toast('Password wajib diisi.', 'error');
-  if (password.length < 6) return toast('Password minimal 6 karakter.', 'error');
-  if (password !== password2) return toast('Konfirmasi password tidak cocok.', 'error');
-  if (!terms) return toast('Centang persetujuan syarat penggunaan dulu.', 'warning');
-  if (!captchaToken) return toast('Captcha belum dimuat. Klik tombol Refresh.', 'error');
-  if (!captchaAnswer) return toast('Pilih semua emoji yang sama dengan gambar di atas.', 'warning');
+  if (!username)               return showErr('Username wajib diisi.');
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) return showErr('Username: 3–20 karakter, huruf kecil/angka/underscore.');
+  if (!password)               return showErr('Password wajib diisi.');
+  if (password.length < 6)     return showErr('Password minimal 6 karakter.');
+  if (password !== password2)  return showErr('Konfirmasi password tidak cocok.');
+  if (!terms)                  return showErr('Centang persetujuan syarat penggunaan.');
+  if (!captchaToken)           return showErr('Captcha belum dimuat. Klik "Muat Ulang Captcha".');
 
-  const btn = document.getElementById('btn-register');
+  const answer = getCaptchaAnswer();
+  if (!answer) return showErr('Pilih semua emoji yang sama dengan gambar di atas (minimal 2 pilihan dengan emoji yang sama).');
+
+  const btn = document.getElementById('btn-reg');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Mendaftar...';
 
-  try {
-    const r = await apiFetch('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ username, password, captchaToken, captchaAnswer })
-    });
+  const data = await api('/auth/register', {
+    method: 'POST',
+    body: { username, password, captchaToken, captchaAnswer: answer }
+  });
 
-    btn.disabled = false;
-    btn.textContent = 'Daftar Sekarang';
+  btn.disabled = false;
+  btn.textContent = 'Daftar Sekarang';
 
-    if (!r) return;
-    if (r.ok) {
-      setToken(r.data.token);
-      setUser({ username: r.data.username, role: r.data.role });
-      toast('Akun berhasil dibuat! Selamat datang.', 'success');
-      setTimeout(() => window.location.href = '/dashboard', 800);
-    } else {
-      toast(r.data.message || 'Gagal mendaftar.', 'error');
-      if (r.data.error === 'CAPTCHA_WRONG' || r.data.error === 'CAPTCHA_EXPIRED') {
-        document.querySelectorAll('.captcha-cell.selected').forEach(c => c.classList.add('wrong'));
-        setTimeout(loadCaptcha, 700);
-      }
+  if (!data) return;
+
+  if (data.ok) {
+    Store.setAuth(data.token, { username: data.username, role: data.role });
+    toast('Akun berhasil dibuat! Selamat datang 🎉', 'ok');
+    setTimeout(() => location.href = '/dashboard', 700);
+  } else {
+    showErr(data.msg || 'Gagal mendaftar.');
+    if (data.captchaWrong || data.captchaExpired) {
+      document.querySelectorAll('.captcha-cell.selected').forEach(c => c.classList.add('wrong'));
+      setTimeout(loadCaptcha, 700);
     }
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = 'Daftar Sekarang';
-    toast('Koneksi gagal. Coba lagi.', 'error');
   }
-});
+}
 
-// Enter key
-document.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-register').click(); });
+document.getElementById('btn-reg').addEventListener('click', doRegister);
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+
+loadCaptcha();
 </script>
 </body>
 </html>
