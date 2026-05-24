@@ -2,261 +2,201 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard — Ray App</title>
-<link rel="stylesheet" href="/assets/css/style.css">
-<style>
-.server-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px; }
-.page-head { display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px; }
-.page-title { font-size:1.5rem;font-weight:800; }
-.server-dot { width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0; }
-.limit-bar { background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:.82rem;color:var(--muted);display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px; }
-.limit-item { display:flex;align-items:center;gap:6px; }
-.prereq-modal { background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px; }
-.prereq-item { display:flex;align-items:center;gap:12px;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:.88rem; }
-.prereq-item .pi-icon { width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1rem; }
-.prereq-item .pi-label { flex:1; }
-.prereq-item .pi-btn { padding:6px 14px;font-size:.78rem; }
-.check-done { color:var(--success);font-weight:700; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<nav class="navbar" id="navbar"></nav>
-<div id="toast-container"></div>
+<nav class="nav" id="nav"></nav>
+<div id="toasts"></div>
 
-<div class="page-wrap">
+<div class="page">
   <div class="container section">
 
-    <div class="page-head">
+    <!-- Header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:28px">
       <div>
-        <div class="page-title">Dashboard</div>
-        <div style="color:var(--muted);font-size:.85rem" id="welcome-text">Selamat datang!</div>
+        <h1 style="font-size:1.6rem;margin-bottom:4px">Dashboard</h1>
+        <p id="welcome" style="color:var(--muted);font-size:.9rem">Memuat...</p>
       </div>
-      <button class="btn btn-primary" id="btn-create">
-        + Buat Server
-      </button>
+      <button class="btn btn-primary" id="btn-new">+ Buat Server</button>
     </div>
 
-    <!-- LIMIT INFO -->
-    <div class="limit-bar" id="limit-bar">
-      <div class="limit-item">
-        <span style="color:var(--text)">Server:</span>
-        <strong id="lim-servers">-/4</strong>
-      </div>
-      <div class="limit-item">
-        <span style="color:var(--text)">Buat hari ini:</span>
-        <strong id="lim-daily">-/2</strong>
-      </div>
-      <div class="limit-item" style="margin-left:auto;font-size:.75rem;opacity:.7">
-        Server tidak aktif 7 hari otomatis dihapus
-      </div>
+    <!-- Limit bar -->
+    <div id="limit-bar" style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap;font-size:.82rem;color:var(--muted);align-items:center">
+      <span>Server: <strong id="lim-srv" style="color:var(--text)">—</strong></span>
+      <span>Buat hari ini: <strong id="lim-day" style="color:var(--text)">—</strong></span>
+      <span style="margin-left:auto;font-size:.72rem">Server tidak aktif 7 hari otomatis dihapus</span>
     </div>
 
-    <!-- SERVERS GRID -->
-    <div id="servers-wrap">
-      <div class="empty-state" id="loading-state">
-        <div class="spinner" style="width:32px;height:32px"></div>
-        <div>Memuat server...</div>
-      </div>
-      <div class="server-grid" id="server-grid" style="display:none"></div>
-      <div class="empty-state" id="empty-state" style="display:none">
-        <div class="empty-icon">&#9729;</div>
+    <!-- Servers -->
+    <div id="srv-area">
+      <div class="empty" id="loading"><div class="spinner lg"></div><div class="empty-title" style="margin-top:8px">Memuat...</div></div>
+      <div class="server-grid" id="srv-grid" style="display:none"></div>
+      <div class="empty" id="srv-empty" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         <div class="empty-title">Belum ada server</div>
         <div class="empty-sub">Klik "Buat Server" untuk mulai hosting website pertamamu</div>
-        <button class="btn btn-primary" id="btn-create2" style="margin-top:8px">+ Buat Server Pertama</button>
+        <button class="btn btn-primary" style="margin-top:8px" id="btn-new2">+ Buat Server Pertama</button>
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- CREATE SERVER MODAL -->
-<div id="create-modal" style="display:none"><!-- rendered via JS --></div>
-
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 <script>
-if (!requireLogin()) throw new Error('not logged in');
-renderNavbar('dashboard');
+if (!requireLogin()) throw 0;
+buildNav('dash');
 
-const BASE_URL = window.location.origin;
-let userData = null;
-let servers = [];
+const BASE = location.origin;
+let me = null;
 
-// ─── LOAD DATA ────────────────────────────────
-async function loadAll() {
-  // User info
-  const ur = await apiFetch('/auth/me');
-  if (!ur?.ok) return;
-  userData = ur.data;
-  setUser({ username: userData.username, role: userData.role });
-
-  document.getElementById('welcome-text').textContent = `Halo, ${userData.username}!`;
-
-  // Reset daily counter display
-  const now = Date.now();
-  const reset = new Date(userData.dailyCreatesReset).getTime();
-  const dailyCount = (now - reset > 86400000) ? 0 : userData.dailyCreates;
-  document.getElementById('lim-servers').textContent = `${userData.serverCount}/4`;
-  document.getElementById('lim-daily').textContent = `${dailyCount}/2`;
-  document.getElementById('lim-servers').style.color = userData.serverCount >= 4 ? 'var(--danger)' : 'var(--success)';
-  document.getElementById('lim-daily').style.color = dailyCount >= 2 ? 'var(--danger)' : 'var(--text)';
-
-  // Servers
-  const sr = await apiFetch('/servers');
-  document.getElementById('loading-state').style.display = 'none';
-  if (!sr?.ok) return;
-  servers = sr.data.servers;
-  renderServers();
+async function loadMe() {
+  const d = await api('/auth/me');
+  if (!d?.ok) return;
+  me = d.user;
+  Store.setAuth(Store.token(), { username: me.username, role: me.role });
+  buildNav('dash');
+  document.getElementById('welcome').textContent = `Halo, ${me.username}! 👋`;
+  document.getElementById('lim-srv').textContent = `${me.serverCount}/4`;
+  document.getElementById('lim-day').textContent = `${me.dailyCreates}/2`;
+  document.getElementById('lim-srv').style.color = me.serverCount >= 4 ? 'var(--danger)' : 'var(--success)';
+  document.getElementById('lim-day').style.color = me.dailyCreates >= 2 ? 'var(--danger)' : 'var(--text)';
 }
 
-function renderServers() {
-  const grid = document.getElementById('server-grid');
-  const empty = document.getElementById('empty-state');
-  if (!servers.length) { empty.style.display = 'flex'; grid.style.display = 'none'; return; }
-  empty.style.display = 'none';
+async function loadServers() {
+  const d = await api('/server/list');
+  document.getElementById('loading').style.display = 'none';
+  if (!d?.ok) { toast('Gagal memuat server.', 'err'); return; }
+
+  const servers = d.servers;
+  if (!servers.length) { document.getElementById('srv-empty').style.display = 'flex'; return; }
+
+  const grid = document.getElementById('srv-grid');
   grid.style.display = 'grid';
-
   grid.innerHTML = servers.map(s => {
-    const url = `${BASE_URL}/s/${s.name}/`;
-    const lastReq = s.lastRequest ? fmtRelative(s.lastRequest) : 'Belum ada';
-    const daysLeft = s.lastRequest ? Math.ceil((7*86400000 - (Date.now()-new Date(s.lastRequest)))/86400000) : 7;
-    const sizeStr = fmtSize(s.totalSize || 0);
-    const daysColor = daysLeft <= 2 ? 'var(--danger)' : daysLeft <= 4 ? 'var(--warning)' : 'var(--success)';
-
-    return `<div class="server-card" data-id="${s._id}">
+    const daysLeft = s.lastRequestAt
+      ? Math.max(0, Math.ceil((7*86400000 - (Date.now() - new Date(s.lastRequestAt))) / 86400000))
+      : 7;
+    const dayColor = daysLeft <= 1 ? 'var(--danger)' : daysLeft <= 3 ? 'var(--warning)' : 'var(--success)';
+    return `<div class="server-card">
       <div class="server-name">
-        <span class="server-dot"></span>
-        ${escapeHtml(s.name)}
-        <span class="badge badge-active" style="margin-left:auto">Aktif</span>
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--success);flex-shrink:0"></div>
+        ${esc(s.name)}
+        <span class="badge badge-green" style="margin-left:auto">Aktif</span>
       </div>
-      <div class="server-url">
-        <span style="cursor:pointer;color:var(--accent)" onclick="copyText('${url}')">${url}</span>
-      </div>
+      <div class="server-url" onclick="copy('${esc(s.url)}')" title="Klik untuk salin">${esc(s.url)}</div>
       <div class="server-meta">
-        <span>&#128203; ${s.totalFiles || 0} file</span>
-        <span>&#128190; ${sizeStr}</span>
-        <span>&#128202; ${s.totalRequests || 0} req</span>
-        <span>&#9203; ${lastReq}</span>
-        <span style="color:${daysColor}">&#9888; ${daysLeft > 0 ? daysLeft+'h' : 'Expired'} tersisa</span>
+        <span>${fmtBytes(s.totalSize)} storage</span>
+        <span>${s.totalRequests} request</span>
+        <span>Terakhir: ${fmtAgo(s.lastRequestAt)}</span>
+        <span style="color:${dayColor};font-weight:500">${daysLeft}h sebelum dihapus</span>
       </div>
       <div class="server-actions">
-        <button class="btn btn-primary btn-sm" onclick="openFileManager('${s._id}','${escapeHtml(s.name)}')">Kelola File</button>
-        <a href="${url}" target="_blank" class="btn btn-ghost btn-sm">Buka</a>
-        <button class="btn btn-ghost btn-sm" onclick="copyText('${url}')">Salin URL</button>
-        <button class="btn btn-danger btn-sm" onclick="deleteServer('${s._id}','${escapeHtml(s.name)}')">Hapus</button>
+        <button class="btn btn-primary btn-sm" onclick="goFM('${s.id}','${esc(s.name)}')">Kelola File</button>
+        <a href="${esc(s.url)}" target="_blank" class="btn btn-ghost btn-sm">Buka ↗</a>
+        <button class="btn btn-ghost btn-sm" onclick="copy('${esc(s.url)}')">Salin URL</button>
+        <button class="btn btn-danger btn-sm" onclick="delServer('${s.id}','${esc(s.name)}')">Hapus</button>
       </div>
     </div>`;
   }).join('');
 }
 
-// ─── FILE MANAGER NAV ─────────────────────────
-function openFileManager(id, name) {
-  window.location.href = `/filemanager?server=${id}&name=${encodeURIComponent(name)}`;
+function goFM(id, name) {
+  location.href = `/filemanager?id=${id}&name=${encodeURIComponent(name)}`;
 }
 
-// ─── DELETE SERVER ────────────────────────────
-function deleteServer(id, name) {
-  confirmModal('Hapus Server', `Hapus server "${name}"? Semua file akan hilang permanen.`, async () => {
-    const r = await apiFetch(`/servers/${id}`, { method: 'DELETE' });
-    if (r?.ok) { toast('Server berhasil dihapus.', 'success'); loadAll(); }
-    else toast(r?.data?.message || 'Gagal menghapus.', 'error');
+async function delServer(id, name) {
+  confirm('Hapus Server', `Hapus server "${name}"? Semua file akan hilang permanen.`, async () => {
+    const d = await api(`/server/${id}`, { method: 'DELETE' });
+    if (d?.ok) { toast('Server dihapus.', 'ok'); loadAll(); }
+    else toast(d?.msg || 'Gagal.', 'err');
   }, true);
 }
 
-// ─── CREATE SERVER ────────────────────────────
 function openCreateModal() {
-  if (userData?.serverCount >= 4) return toast('Maksimal 4 server per akun.', 'error');
+  if (me?.serverCount >= 4) return toast('Maksimal 4 server per akun.', 'err');
+  if (me?.dailyCreates >= 2) return toast('Batas harian tercapai. Coba besok.', 'warn');
 
-  const WA_URL = 'https://whatsapp.com/channel/0029Vb89VkwLNSZyIqpdbX3t';
-  const TT_URL = 'https://www.tiktok.com/@rayapp_host';
-
+  const WA = 'https://whatsapp.com/channel/0029Vb89VkwLNSZyIqpdbX3t';
+  const TT = 'https://www.tiktok.com/@rayapp_host';
   let waOk = false, ttOk = false;
 
-  const { overlay, close } = showModal({
+  const { bg, close } = modal({
     title: 'Buat Server Baru',
     body: `
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="font-size:.85rem;color:var(--muted)">Sebelum membuat server, ikuti dulu channel kami:</div>
+        <p style="font-size:.85rem;color:var(--muted)">Ikuti channel kami dulu sebelum membuat server:</p>
 
-        <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden">
           <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border)">
-            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#25d366,#128c7e);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0">W</div>
-            <div style="flex:1;font-size:.85rem"><div style="font-weight:600">WhatsApp Channel</div><div style="color:var(--muted);font-size:.75rem">Ikuti untuk info update terbaru</div></div>
-            <button class="btn btn-success btn-sm" id="btn-wa" onclick="openPrereq('wa')">Ikuti</button>
+            <div style="width:36px;height:36px;border-radius:9px;background:#25d366;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0;font-size:.85rem">WA</div>
+            <div style="flex:1;font-size:.85rem"><div style="font-weight:600">WhatsApp Channel</div><div style="color:var(--muted);font-size:.75rem">Update terbaru Ray App</div></div>
+            <button class="btn btn-success btn-sm" id="wa-btn" onclick="openSocial('wa')">Ikuti</button>
           </div>
           <div style="display:flex;align-items:center;gap:12px;padding:12px 14px">
-            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#ff0050,#010101);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;flex-shrink:0">T</div>
-            <div style="flex:1;font-size:.85rem"><div style="font-weight:600">TikTok</div><div style="color:var(--muted);font-size:.75rem">Follow @rayapp_host</div></div>
-            <button class="btn btn-danger btn-sm" id="btn-tt" onclick="openPrereq('tt')">Follow</button>
+            <div style="width:36px;height:36px;border-radius:9px;background:#000;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0;font-size:.85rem">TT</div>
+            <div style="flex:1;font-size:.85rem"><div style="font-weight:600">TikTok</div><div style="color:var(--muted);font-size:.75rem">@rayapp_host</div></div>
+            <button class="btn btn-ghost btn-sm" id="tt-btn" onclick="openSocial('tt')">Follow</button>
           </div>
         </div>
 
-        <hr style="border:none;border-top:1px solid var(--border)">
-
-        <div class="input-group">
-          <label>Nama Folder / Server</label>
-          <input type="text" id="server-name-input" placeholder="contoh: portfolio, myblog, toko-online" maxlength="30">
-          <div style="font-size:.73rem;color:var(--subtle);margin-top:3px" id="server-url-preview">URL: <span style="color:var(--muted)">masukkan nama folder...</span></div>
-        </div>
-        <div style="font-size:.78rem;color:var(--muted);background:var(--surface);padding:10px;border-radius:8px;line-height:1.6">
-          Huruf kecil, angka, strip, underscore. 3-30 karakter.<br>
-          Nama tidak bisa sama dengan milik orang lain.
+        <div class="field">
+          <label>Nama Folder Server</label>
+          <input class="input" type="text" id="srv-name" placeholder="contoh: portfolio, toko, blog" maxlength="30" spellcheck="false">
+          <span style="font-size:.72rem;color:var(--subtle)">Huruf kecil, angka, strip. 3–30 karakter.</span>
+          <div id="url-prev" style="font-size:.75rem;color:var(--muted);margin-top:2px"></div>
         </div>
       </div>`,
-    confirmText: 'Buat Server',
-    confirmClass: 'btn-primary',
-    onConfirm: async (_, closeModal) => {
-      if (!waOk || !ttOk) return toast('Ikuti WA Channel dan TikTok dulu.', 'warning');
-      const name = document.getElementById('server-name-input').value.trim();
-      if (!name) return toast('Nama folder wajib diisi.', 'error');
+    ok: 'Buat Server',
+    onOk: async (el, closeM) => {
+      if (!waOk || !ttOk) return toast('Ikuti WA dan TikTok dulu.', 'warn');
+      const name = document.getElementById('srv-name').value.trim().toLowerCase().replace(/\s+/g,'-');
+      if (!name) return toast('Nama server wajib diisi.', 'err');
 
-      const btn = overlay.querySelector('.btn-confirm');
+      const btn = el.querySelector('._ok');
       btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Membuat...';
 
-      const r = await apiFetch('/servers/create', {
-        method: 'POST',
-        body: JSON.stringify({ name, waConfirmed: true, tiktokConfirmed: true })
-      });
+      const d = await api('/server/create', { method: 'POST', body: { name } });
       btn.disabled = false; btn.textContent = 'Buat Server';
 
-      if (r?.ok) {
-        toast(`Server "${name}" berhasil dibuat!`, 'success');
-        closeModal();
-        loadAll();
-      } else {
-        toast(r?.data?.message || 'Gagal membuat server.', 'error');
-      }
+      if (d?.ok) { toast(`Server "${name}" berhasil dibuat!`, 'ok'); closeM(); loadAll(); }
+      else toast(d?.msg || 'Gagal.', 'err');
     }
   });
 
-  // Server name preview
-  overlay.querySelector('#server-name-input')?.addEventListener('input', function() {
-    const v = this.value.trim().toLowerCase().replace(/\s+/g,'-');
-    const preview = overlay.querySelector('#server-url-preview');
-    if (preview) preview.innerHTML = `URL: <span style="color:var(--accent);font-family:monospace">${window.location.origin}/s/${escapeHtml(v)||'namafolder'}/</span>`;
+  document.getElementById('srv-name')?.addEventListener('input', function() {
+    const v = this.value.trim().toLowerCase().replace(/\s+/g,'-') || 'namakamu';
+    const prev = document.getElementById('url-prev');
+    if (prev) prev.innerHTML = `URL: <code style="color:var(--primary)">${location.origin}/s/${esc(v)}/</code>`;
   });
 
-  // Prereq buttons
-  window.openPrereq = function(type) {
-    const url = type === 'wa' ? WA_URL : TT_URL;
-    const win = window.open(url, '_blank');
-    // After 2s assume done (redirect logic)
+  window.openSocial = function(type) {
+    window.open(type === 'wa' ? WA : TT, '_blank');
     setTimeout(() => {
       if (type === 'wa') {
         waOk = true;
-        const btn = overlay.querySelector('#btn-wa');
-        if (btn) { btn.textContent = 'Sudah'; btn.className = 'btn btn-ghost btn-sm check-done'; btn.disabled = true; }
+        const b = document.getElementById('wa-btn');
+        if (b) { b.textContent = '✓ Sudah'; b.className = 'btn btn-ghost btn-sm'; b.disabled = true; b.style.color = 'var(--success)'; }
       } else {
         ttOk = true;
-        const btn = overlay.querySelector('#btn-tt');
-        if (btn) { btn.textContent = 'Sudah'; btn.className = 'btn btn-ghost btn-sm check-done'; btn.disabled = true; }
+        const b = document.getElementById('tt-btn');
+        if (b) { b.textContent = '✓ Sudah'; b.className = 'btn btn-ghost btn-sm'; b.disabled = true; b.style.color = 'var(--success)'; }
       }
-      if (waOk && ttOk) toast('Terima kasih! Sekarang isi nama folder.', 'success');
     }, 1500);
   };
 }
 
-document.getElementById('btn-create').addEventListener('click', openCreateModal);
-document.getElementById('btn-create2')?.addEventListener('click', openCreateModal);
+async function loadAll() {
+  await Promise.all([loadMe(), loadServers()]);
+}
+
+document.getElementById('btn-new').addEventListener('click', openCreateModal);
+document.getElementById('btn-new2')?.addEventListener('click', openCreateModal);
 
 loadAll();
 </script>
