@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Ray App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<nav class="nav" id="nav"></nav>
+<div id="toasts"></div>
+<div class="sidebar-overlay" id="sb-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:499;display:none" onclick="closeSidebar()"></div>
+
+<div class="page">
+  <div class="layout-sidebar">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+        <div class="sidebar-section">Admin Panel</div>
+        <button class="sidebar-link active" data-panel="overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Overview
+        </button>
+        <button class="sidebar-link" data-panel="users">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Users
+        </button>
+        <button class="sidebar-link" data-panel="servers">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+          Servers
+        </button>
+        <button class="sidebar-link" data-panel="ips">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Blokir IP
+        </button>
+        <button class="sidebar-link" data-panel="activity">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Aktivitas
+        </button>
+        <div style="border-top:1.5px solid var(--border);margin:10px 0"></div>
+        <a href="/dashboard" class="sidebar-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Dashboard
+        </a>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main-area">
+
+      <!-- OVERVIEW -->
+      <div class="panel" id="p-overview">
+        <h2 style="margin-bottom:20px">Overview</h2>
+        <div class="stats" id="stats-grid" style="margin-bottom:24px">
+          <div class="stat-card"><div class="stat-val" id="st-users">—</div><div class="stat-lbl">Total Users</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-servers">—</div><div class="stat-lbl">Total Servers</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-files">—</div><div class="stat-lbl">Total Files</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-ips">—</div><div class="stat-lbl">Blocked IPs</div></div>
+          <div class="stat-card"><div class="stat-val" id="st-stor">—</div><div class="stat-lbl">Storage Dipakai</div></div>
+        </div>
+        <h3 style="margin-bottom:12px">Aktivitas Terbaru</h3>
+        <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Detail</th><th>IP</th></tr></thead><tbody id="tb-activity"></tbody></table></div>
+      </div>
+
+      <!-- USERS -->
+      <div class="panel" id="p-users" style="display:none">
+        <h2 style="margin-bottom:20px">Manajemen User</h2>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <input class="input" id="user-q" placeholder="Cari username..." style="max-width:240px">
+          <button class="btn btn-primary btn-sm" onclick="loadUsers()">Cari</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Username</th><th>Role</th><th>Servers</th><th>Status</th><th>Daftar</th><th>Aksi</th></tr></thead><tbody id="tb-users"></tbody></table></div>
+        <div id="pg-users" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.82rem"></div>
+      </div>
+
+      <!-- SERVERS -->
+      <div class="panel" id="p-servers" style="display:none">
+        <h2 style="margin-bottom:20px">Manajemen Server</h2>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <input class="input" id="srv-q" placeholder="Cari nama / owner..." style="max-width:240px">
+          <button class="btn btn-primary btn-sm" onclick="loadServers()">Cari</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Nama</th><th>Owner</th><th>Storage</th><th>Request</th><th>Terakhir</th><th>Aksi</th></tr></thead><tbody id="tb-servers"></tbody></table></div>
+        <div id="pg-servers" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.82rem"></div>
+      </div>
+
+      <!-- IPs -->
+      <div class="panel" id="p-ips" style="display:none">
+        <h2 style="margin-bottom:20px">Blokir IP</h2>
+        <div class="card" style="padding:18px;margin-bottom:20px">
+          <h3 style="margin-bottom:12px">Blokir IP Baru</h3>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input class="input" id="ip-new" placeholder="IP Address (mis: 1.2.3.4)" style="max-width:220px">
+            <input class="input" id="ip-reason" placeholder="Alasan (opsional)" style="max-width:220px">
+            <button class="btn btn-danger btn-sm" onclick="blockIP()">Blokir</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>IP</th><th>Alasan</th><th>Diblokir oleh</th><th>Waktu</th><th>Aksi</th></tr></thead><tbody id="tb-ips"></tbody></table></div>
+      </div>
+
+      <!-- ACTIVITY -->
+      <div class="panel" id="p-activity" style="display:none">
+        <h2 style="margin-bottom:20px">Log Aktivitas</h2>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <input class="input" id="act-q" placeholder="Filter aksi / user..." style="max-width:240px">
+          <button class="btn btn-primary btn-sm" onclick="loadActivity()">Filter</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Waktu</th><th>User</th><th>Aksi</th><th>Detail</th><th>IP</th></tr></thead><tbody id="tb-actlog"></tbody></table></div>
+        <div id="pg-act" style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:.82rem"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/app.js"></script>
+<script>
+if (!requireLogin()) throw 0;
+if (!requireAdmin()) throw 0;
+buildNav('admin');
+
+let uPage = 1, sPage = 1, aPage = 1;
+
+// ── Sidebar switching ─────────────────────────────
+document.querySelectorAll('.sidebar-link[data-panel]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sidebar-link').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    const id = btn.dataset.panel;
+    document.getElementById('p-' + id).style.display = 'block';
+    if (id === 'overview') loadOverview();
+    if (id === 'users')    loadUsers();
+    if (id === 'servers')  loadServers();
+    if (id === 'ips')      loadIPs();
+    if (id === 'activity') loadActivity();
+    closeSidebar();
+  });
+});
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sb-overlay').style.display = 'none';
+}
+
+// ── Hamburger opens sidebar ───────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('hamburger')?.addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sb-overlay').style.display = document.getElementById('sidebar').classList.contains('open') ? 'block' : 'none';
+  });
+});
+
+// ── Overview ──────────────────────────────────────
+async function loadOverview() {
+  const d = await api('/admin/stats');
+  if (!d?.ok) return;
+  const s = d.stats;
+  document.getElementById('st-users').textContent   = s.users;
+  document.getElementById('st-servers').textContent = s.servers;
+  document.getElementById('st-files').textContent   = s.files;
+  document.getElementById('st-ips').textContent     = s.ips;
+  document.getElementById('st-stor').textContent    = fmtBytes(s.storage);
+
+  const tb = document.getElementById('tb-activity');
+  const actionColor = a => ({ LOGIN:'var(--success)', REGISTER:'var(--primary)', DELETE:'var(--danger)', CREATE:'var(--primary)', UPLOAD:'var(--warning)', BLOCK:'var(--danger)' }[Object.keys({LOGIN:1,REGISTER:1,DELETE:1,CREATE:1,UPLOAD:1,BLOCK:1}).find(k => a.includes(k))] || 'var(--muted)');
+  tb.innerHTML = (d.activity || []).map(a => `<tr>
+    <td style="white-space:nowrap;font-size:.75rem">${fmtDate(a.createdAt)}</td>
+    <td><span style="color:var(--primary)">${esc(a.username||'SYSTEM')}</span></td>
+    <td><span style="color:${actionColor(a.action)};font-weight:600;font-size:.78rem">${esc(a.action)}</span></td>
+    <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem">${esc(a.detail||'-')}</td>
+    <td style="font-family:monospace;font-size:.72rem;color:var(--muted)">${esc(a.ip||'-')}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Belum ada aktivitas.</td></tr>';
+}
+
+// ── Users ─────────────────────────────────────────
+async function loadUsers(page = 1) {
+  uPage = page;
+  const q = document.getElementById('user-q').value.trim();
+  const d = await api(`/admin/users?page=${page}&q=${encodeURIComponent(q)}`);
+  if (!d?.ok) return;
+  document.getElementById('tb-users').innerHTML = d.users.map(u => `<tr>
+    <td><strong>${esc(u.username)}</strong></td>
+    <td><span class="badge ${u.role==='admin'?'badge-blue':'badge-gray'}">${u.role}</span></td>
+    <td>${u.serverCount||0}/4</td>
+    <td>${u.isBlocked ? '<span class="badge badge-red">Diblokir</span>' : '<span class="badge badge-green">Aktif</span>'}</td>
+    <td style="font-size:.78rem">${fmtDate(u.createdAt)}</td>
+    <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button class="btn btn-sm ${u.isBlocked?'btn-success':'btn-ghost'}" onclick="toggleBlock('${u._id}','${esc(u.username)}',${u.isBlocked})">${u.isBlocked?'Aktifkan':'Blokir'}</button>
+      <button class="btn btn-danger btn-sm" onclick="delUser('${u._id}','${esc(u.username)}')">Hapus</button>
+    </div></td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Tidak ada user.</td></tr>';
+  pager('pg-users', page, d.pages, p => loadUsers(p));
+}
+
+async function toggleBlock(id, name, isBlocked) {
+  confirm(isBlocked ? 'Aktifkan User' : 'Blokir User', `${isBlocked?'Aktifkan':'Blokir'} user "${name}"?`, async () => {
+    const d = await api(`/admin/user/${id}/block`, { method:'PUT' });
+    if (d?.ok) { toast(`User ${d.isBlocked?'diblokir':'diaktifkan'}.`, 'ok'); loadUsers(uPage); }
+    else toast(d?.msg || 'Gagal.', 'err');
+  }, !isBlocked);
+}
+
+async function delUser(id, name) {
+  confirm('Hapus User', `Hapus user "${name}" dan semua datanya?`, async () => {
+    const d = await api(`/admin/user/${id}`, { method:'DELETE' });
+    if (d?.ok) { toast('User dihapus.', 'ok'); loadUsers(uPage); }
+    else toast(d?.msg || 'Gagal.', 'err');
+  }, true);
+}
+
+// ── Servers ───────────────────────────────────────
+async function loadServers(page = 1) {
+  sPage = page;
+  const q = document.getElementById('srv-q').value.trim();
+  const d = await api(`/admin/servers?page=${page}&q=${encodeURIComponent(q)}`);
+  if (!d?.ok) return;
+  document.getElementById('tb-servers').innerHTML = d.servers.map(s => `<tr>
+    <td><strong>${esc(s.name)}</strong></td>
+    <td><span style="color:var(--primary)">${esc(s.ownerUsername)}</span></td>
+    <td>${fmtBytes(s.totalSize||0)}</td>
+    <td>${s.totalRequests||0}</td>
+    <td style="font-size:.78rem">${fmtAgo(s.lastRequestAt)}</td>
+    <td><div style="display:flex;gap:5px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="viewSrvFiles('${s._id}','${esc(s.name)}')">Lihat File</button>
+      <a href="${esc(s.url)}" target="_blank" class="btn btn-ghost btn-sm">Buka</a>
+      <button class="btn btn-danger btn-sm" onclick="delServer('${s._id}','${esc(s.name)}')">Hapus</button>
+    </div></td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">Tidak ada server.</td></tr>';
+  pager('pg-servers', page, d.pages, p => loadServers(p));
+}
+
+async function viewSrvFiles(id, name) {
+  const d = await api(`/admin/server/${id}/files`);
+  if (!d?.ok) return;
+  const rows = d.files.map(f => `<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:.78rem"><span style="flex:1;font-family:monospace;word-break:break-all">${esc(f.filePath)}</span><span style="color:var(--muted);flex-shrink:0">${fmtBytes(f.size)}</span></div>`).join('') || '<div style="color:var(--muted);font-size:.82rem;padding:8px 0">Server kosong.</div>';
+  modal({ title: `File di "${name}"`, body: `<div style="max-height:320px;overflow-y:auto">${rows}</div>`, ok:'', cancel:'Tutup' });
+}
+
+async function delServer(id, name) {
+  confirm('Hapus Server', `Hapus server "${name}"?`, async () => {
+    const d = await api(`/admin/server/${id}`, { method:'DELETE' });
+    if (d?.ok) { toast('Server dihapus.', 'ok'); loadServers(sPage); }
+    else toast(d?.msg || 'Gagal.', 'err');
+  }, true);
+}
+
+// ── IPs ───────────────────────────────────────────
+async function loadIPs() {
+  const d = await api('/admin/blocked-ips');
+  if (!d?.ok) return;
+  document.getElementById('tb-ips').innerHTML = d.ips.map(ip => `<tr>
+    <td><code style="font-size:.82rem;color:var(--danger)">${esc(ip.ip)}</code></td>
+    <td>${esc(ip.reason||'-')}</td>
+    <td>${esc(ip.blockedBy||'-')}</td>
+    <td style="font-size:.78rem">${fmtDate(ip.createdAt)}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="unblockIP('${esc(ip.ip)}')">Buka Blokir</button></td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Tidak ada IP yang diblokir.</td></tr>';
+}
+
+async function blockIP() {
+  const ip = document.getElementById('ip-new').value.trim();
+  const reason = document.getElementById('ip-reason').value.trim();
+  if (!ip) return toast('Masukkan IP.', 'err');
+  const d = await api('/admin/block-ip', { method:'POST', body:{ ip, reason } });
+  if (d?.ok) { toast('IP diblokir.', 'ok'); document.getElementById('ip-new').value = ''; document.getElementById('ip-reason').value = ''; loadIPs(); }
+  else toast(d?.msg || 'Gagal.', 'err');
+}
+
+async function unblockIP(ip) {
+  confirm('Buka Blokir', `Buka blokir IP ${ip}?`, async () => {
+    const d = await api(`/admin/block-ip/${encodeURIComponent(ip)}`, { method:'DELETE' });
+    if (d?.ok) { toast('IP dibuka.', 'ok'); loadIPs(); }
+  });
+}
+
+// ── Activity ──────────────────────────────────────
+async function loadActivity(page = 1) {
+  aPage = page;
+  const q = document.getElementById('act-q').value.trim();
+  const d = await api(`/admin/activity?page=${page}&q=${encodeURIComponent(q)}`);
+  if (!d?.ok) return;
+  const actionColor = a => {
+    if (a.includes('DELETE') || a.includes('BLOCK')) return 'var(--danger)';
+    if (a.includes('CREATE') || a.includes('REGISTER')) return 'var(--success)';
+    if (a.includes('LOGIN')) return 'var(--primary)';
+    return 'var(--muted)';
+  };
+  document.getElementById('tb-actlog').innerHTML = d.logs.map(a => `<tr>
+    <td style="white-space:nowrap;font-size:.75rem">${fmtDate(a.createdAt)}</td>
+    <td><span style="color:var(--primary)">${esc(a.username||'SYSTEM')}</span></td>
+    <td><span style="color:${actionColor(a.action)};font-weight:600;font-size:.78rem">${esc(a.action)}</span></td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem">${esc(a.detail||'-')}</td>
+    <td style="font-family:monospace;font-size:.72rem;color:var(--muted)">${esc(a.ip||'-')}</td>
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted)">Tidak ada log.</td></tr>';
+  pager('pg-act', page, d.pages, p => loadActivity(p));
+}
+
+// ── Pager ─────────────────────────────────────────
+function pager(id, cur, total, fn) {
+  const el = document.getElementById(id);
+  if (!el || total <= 1) { if (el) el.innerHTML = ''; return; }
+  el.innerHTML = `<span style="color:var(--muted)">Hal ${cur}/${total}</span>
+    ${cur > 1 ? `<button class="btn btn-ghost btn-sm" onclick="(${fn})(${cur-1})">← Prev</button>` : ''}
+    ${cur < total ? `<button class="btn btn-ghost btn-sm" onclick="(${fn})(${cur+1})">Next →</button>` : ''}`;
+}
+
+// ── Search on enter ───────────────────────────────
+document.getElementById('user-q').addEventListener('keydown', e => e.key === 'Enter' && loadUsers());
+document.getElementById('srv-q').addEventListener('keydown', e => e.key === 'Enter' && loadServers());
+document.getElementById('act-q').addEventListener('keydown', e => e.key === 'Enter' && loadActivity());
+
+// ── Init ──────────────────────────────────────────
+loadOverview();
+</script>
+</body>
+</html>
