@@ -1,79 +1,55 @@
 const jwt = require('jsonwebtoken');
 const { User, BlockedIP, Activity } = require('./models');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'rayapp_secret_change_in_prod';
+const SECRET = () => process.env.JWT_SECRET || 'rayapp_dev_secret_change_me';
 
-// ─── IP Blocker Middleware ────────────────────────────────
-async function ipBlocker(req, res, next) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
-  req.clientIP = ip;
-  try {
-    const blocked = await BlockedIP.findOne({ ip });
-    if (blocked) {
-      return res.status(403).json({ error: 'IP_BLOCKED', message: 'Akses ditolak. IP kamu telah diblokir.' });
-    }
-    next();
-  } catch (e) {
-    next();
-  }
+function getIP(req) {
+  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || 'unknown';
 }
 
-// ─── JWT Auth Middleware ──────────────────────────────────
-async function requireAuth(req, res, next) {
+async function ipGuard(req, res, next) {
+  req.ip2 = getIP(req);
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.token;
-    if (!token) return res.status(401).json({ error: 'NO_TOKEN', message: 'Token tidak ditemukan.' });
+    const blocked = await BlockedIP.findOne({ ip: req.ip2 });
+    if (blocked) return res.status(403).json({ ok: false, msg: 'IP kamu diblokir.' });
+  } catch (_) {}
+  next();
+}
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) return res.status(401).json({ error: 'INVALID_TOKEN', message: 'Token tidak valid.' });
-    if (user.isBlocked) return res.status(403).json({ error: 'USER_BLOCKED', message: 'Akun kamu telah diblokir.' });
-
+async function auth(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  if (!token) return res.status(401).json({ ok: false, msg: 'Token tidak ada.' });
+  try {
+    const payload = jwt.verify(token, SECRET());
+    const user = await User.findById(payload.id).select('-password');
+    if (!user) return res.status(401).json({ ok: false, msg: 'User tidak ditemukan.' });
+    if (user.isBlocked) return res.status(403).json({ ok: false, msg: 'Akun diblokir.' });
     req.user = user;
     next();
-  } catch (e) {
-    return res.status(401).json({ error: 'TOKEN_EXPIRED', message: 'Sesi habis, silakan login ulang.' });
+  } catch (_) {
+    return res.status(401).json({ ok: false, msg: 'Token tidak valid atau expired.' });
   }
 }
 
-// ─── Admin Middleware ─────────────────────────────────────
-async function requireAdmin(req, res, next) {
-  await requireAuth(req, res, () => {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'FORBIDDEN', message: 'Akses admin diperlukan.' });
-    }
+async function adminAuth(req, res, next) {
+  await auth(req, res, () => {
+    if (req.user?.role !== 'admin') return res.status(403).json({ ok: false, msg: 'Admin only.' });
     next();
   });
 }
 
-// ─── Activity Logger ──────────────────────────────────────
-async function logActivity(userId, username, action, target, req) {
-  try {
-    await Activity.create({
-      userId,
-      username,
-      action,
-      target,
-      ip: req?.clientIP || 'unknown',
-      userAgent: req?.headers?.['user-agent']?.substring(0, 200) || 'unknown'
-    });
-  } catch (e) { /* silent */ }
+function makeToken(user) {
+  return jwt.sign({ id: user._id, role: user.role }, SECRET(), { expiresIn: '30d' });
 }
 
-// ─── XSS Sanitizer ───────────────────────────────────────
-function sanitize(str) {
-  if (typeof str !== 'string') return str;
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
+async function log(username, action, detail, ip) {
+  try { await Activity.create({ username, action, detail, ip }); } catch (_) {}
 }
 
-function generateToken(user) {
-  return jwt.sign({ id: user._id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+function xss(s) {
+  if (typeof s !== 'string') return '';
+  return s.replace(/[<>"'&]/g, c => ({ '<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','&':'&amp;' }[c]));
 }
 
-module.exports = { ipBlocker, requireAuth, requireAdmin, logActivity, sanitize, generateToken };
+module.exports = { ipGuard, auth, adminAuth, makeToken, log, xss, getIP };
