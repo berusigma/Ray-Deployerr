@@ -1,200 +1,99 @@
-const express = require('express');
-const router = express.Router();
-const { Server, User, Activity, FileData } = require('../models');
-const { requireAuth, logActivity, sanitize } = require('../middleware');
+const router = require('express').Router();
+const { Server, File, User } = require('../models');
+const { auth, log, getIP } = require('../middleware');
 
 const MAX_SERVERS = 4;
-const MAX_DAILY_CREATES = 2;
-const WA_CHANNEL = 'https://whatsapp.com/channel/0029Vb89VkwLNSZyIqpdbX3t';
-const TIKTOK_URL = 'https://www.tiktok.com/@rayapp_host'; // sesuaikan
+const MAX_DAILY   = 2;
+const WA_URL      = 'https://whatsapp.com/channel/0029Vb89VkwLNSZyIqpdbX3t';
+const TT_URL      = 'https://www.tiktok.com/@rayapp_host'; // ganti sesuai akun
 
-// ─── GET ALL MY SERVERS ───────────────────────────────────
-router.get('/', requireAuth, async (req, res) => {
+const RESERVED = new Set(['api','admin','s','static','public','login','register','dashboard','filemanager','system','rayapp','null','undefined']);
+
+// GET /api/server/prereq
+router.get('/prereq', auth, (_, res) => res.json({ ok: true, wa: WA_URL, tt: TT_URL }));
+
+// GET /api/server/list
+router.get('/list', auth, async (req, res) => {
   try {
-    const servers = await Server.find({ owner: req.user._id })
-      .select('-files')
-      .sort({ createdAt: -1 });
-    res.json({ servers });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const servers = await Server.find({ owner: req.user._id }).sort({ createdAt: -1 });
+    const base = process.env.BASE_URL || 'https://rayapp.vercel.app';
+    res.json({ ok: true, servers: servers.map(s => ({
+      id: s._id, name: s.name,
+      url: `${base}/s/${s.name}/`,
+      totalSize: s.totalSize,
+      totalRequests: s.totalRequests,
+      lastRequestAt: s.lastRequestAt,
+      createdAt: s.createdAt
+    }))});
+  } catch (e) { res.json({ ok: false, msg: 'Gagal memuat server.' }); }
 });
 
-// ─── GET REDIRECT LINKS (sebelum create) ─────────────────
-router.get('/prereq-links', requireAuth, (req, res) => {
-  res.json({ wa: WA_CHANNEL, tiktok: TIKTOK_URL });
-});
-
-// ─── CREATE SERVER ────────────────────────────────────────
-router.post('/create', requireAuth, async (req, res) => {
+// POST /api/server/create
+router.post('/create', auth, async (req, res) => {
   try {
-    let { name, waConfirmed, tiktokConfirmed } = req.body;
+    const { name } = req.body || {};
+    if (!name) return res.json({ ok: false, msg: 'Nama server wajib diisi.' });
 
-    // Require both confirmations
-    if (!waConfirmed || !tiktokConfirmed) {
-      return res.status(400).json({ error: 'PREREQ_REQUIRED', message: 'Kamu harus follow WA Channel dan TikTok terlebih dahulu.' });
-    }
+    const slug = String(name).trim().toLowerCase().replace(/\s+/g, '-');
+    if (!/^[a-z0-9][a-z0-9\-_]{1,28}[a-z0-9]$/.test(slug))
+      return res.json({ ok: false, msg: 'Nama: 3–30 karakter, huruf kecil/angka/strip/underscore.' });
+    if (RESERVED.has(slug))
+      return res.json({ ok: false, msg: 'Nama tersebut tidak bisa digunakan.' });
 
-    // Validate folder name
-    if (!name) return res.status(400).json({ error: 'MISSING_NAME', message: 'Nama folder wajib diisi.' });
-    name = name.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!/^[a-z0-9\-_]{3,30}$/.test(name)) {
-      return res.status(400).json({ error: 'INVALID_NAME', message: 'Nama folder hanya boleh huruf kecil, angka, strip, underscore. 3-30 karakter.' });
-    }
-
-    // Reserved names
-    const reserved = ['api', 'admin', 'dashboard', 'login', 'register', 'static', 's', 'assets', 'public', 'system', 'rayapp'];
-    if (reserved.includes(name)) {
-      return res.status(400).json({ error: 'RESERVED_NAME', message: 'Nama folder tersebut tidak bisa digunakan.' });
-    }
-
-    // Check global uniqueness
-    const existing = await Server.findOne({ name });
-    if (existing) return res.status(409).json({ error: 'NAME_TAKEN', message: 'Nama folder sudah dipakai orang lain.' });
-
-    // Refresh user data
     const user = await User.findById(req.user._id);
+    if (user.serverCount >= MAX_SERVERS)
+      return res.json({ ok: false, msg: `Maksimal ${MAX_SERVERS} server per akun.` });
 
-    // Check max servers
-    if (user.serverCount >= MAX_SERVERS) {
-      return res.status(400).json({ error: 'MAX_SERVERS', message: `Maksimal ${MAX_SERVERS} server per akun.` });
-    }
+    // Daily limit
+    const now = Date.now();
+    const resetAt = new Date(user.dailyResetsAt).getTime();
+    if (now - resetAt > 86400000) { user.dailyCreates = 0; user.dailyResetsAt = new Date(); }
+    if (user.dailyCreates >= MAX_DAILY)
+      return res.json({ ok: false, msg: `Batas harian ${MAX_DAILY}x pembuatan server. Coba besok.` });
 
-    // Reset daily counter if needed
-    const now = new Date();
-    const resetTime = new Date(user.dailyCreatesReset);
-    if (now - resetTime > 24 * 60 * 60 * 1000) {
-      user.dailyCreates = 0;
-      user.dailyCreatesReset = now;
-    }
+    // Unique name
+    const exists = await Server.findOne({ name: slug });
+    if (exists) return res.json({ ok: false, msg: 'Nama server sudah dipakai orang lain.' });
 
-    // Check daily limit
-    if (user.dailyCreates >= MAX_DAILY_CREATES) {
-      const nextReset = new Date(resetTime.getTime() + 24 * 60 * 60 * 1000);
-      return res.status(429).json({
-        error: 'DAILY_LIMIT',
-        message: `Kamu sudah membuat ${MAX_DAILY_CREATES} server hari ini. Coba lagi ${nextReset.toLocaleTimeString('id-ID')}.`,
-        nextReset
-      });
-    }
-
-    // Create server
-    const server = await Server.create({
-      name,
-      owner: user._id,
-      ownerUsername: user.username
-    });
-
+    const server = await Server.create({ name: slug, owner: user._id, ownerUsername: user.username });
     user.serverCount += 1;
     user.dailyCreates += 1;
     await user.save();
+    await log(user.username, 'CREATE_SERVER', slug, getIP(req));
 
-    await logActivity(user._id, user.username, 'CREATE_SERVER', name, req);
-
-    const baseUrl = process.env.BASE_URL || 'https://rayapp.vercel.app';
-    res.status(201).json({
-      success: true,
-      server: {
-        id: server._id,
-        name: server.name,
-        url: `${baseUrl}/s/${server.name}/`,
-        createdAt: server.createdAt
-      }
-    });
+    const base = process.env.BASE_URL || 'https://rayapp.vercel.app';
+    res.json({ ok: true, server: { id: server._id, name: server.name, url: `${base}/s/${server.name}/` } });
   } catch (e) {
-    if (e.code === 11000) return res.status(409).json({ error: 'NAME_TAKEN', message: 'Nama folder sudah dipakai.' });
-    console.error(e);
-    res.status(500).json({ error: 'SERVER_ERROR' });
+    if (e.code === 11000) return res.json({ ok: false, msg: 'Nama server sudah dipakai.' });
+    res.json({ ok: false, msg: 'Gagal membuat server.' });
   }
 });
 
-// ─── GET SERVER DETAIL ────────────────────────────────────
-router.get('/:id', requireAuth, async (req, res) => {
+// DELETE /api/server/:id
+router.delete('/:id', auth, async (req, res) => {
   try {
     const server = await Server.findOne({ _id: req.params.id, owner: req.user._id });
-    if (!server) return res.status(404).json({ error: 'NOT_FOUND', message: 'Server tidak ditemukan.' });
-
-    const files = await FileData.find({ serverId: server._id }).select('filePath size mimeType uploadedAt -data');
-    const baseUrl = process.env.BASE_URL || 'https://rayapp.vercel.app';
-
-    res.json({
-      server: {
-        id: server._id,
-        name: server.name,
-        url: `${baseUrl}/s/${server.name}/`,
-        createdAt: server.createdAt,
-        lastRequest: server.lastRequest,
-        totalRequests: server.totalRequests,
-        totalSize: server.totalSize,
-        isActive: server.isActive,
-        files
-      }
-    });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
-});
-
-// ─── DELETE SERVER ────────────────────────────────────────
-router.delete('/:id', requireAuth, async (req, res) => {
-  try {
-    const server = await Server.findOne({ _id: req.params.id, owner: req.user._id });
-    if (!server) return res.status(404).json({ error: 'NOT_FOUND', message: 'Server tidak ditemukan.' });
-
-    await FileData.deleteMany({ serverId: server._id });
+    if (!server) return res.json({ ok: false, msg: 'Server tidak ditemukan.' });
+    await File.deleteMany({ serverId: server._id });
     await Server.deleteOne({ _id: server._id });
     await User.updateOne({ _id: req.user._id }, { $inc: { serverCount: -1 } });
-
-    await logActivity(req.user._id, req.user.username, 'DELETE_SERVER', server.name, req);
-
-    res.json({ success: true, message: 'Server berhasil dihapus.' });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    await log(req.user.username, 'DELETE_SERVER', server.name, getIP(req));
+    res.json({ ok: true });
+  } catch (_) { res.json({ ok: false, msg: 'Gagal menghapus.' }); }
 });
 
-// ─── GET FILE TREE ────────────────────────────────────────
-router.get('/:id/filetree', requireAuth, async (req, res) => {
+// GET /api/server/:id/files  - flat file list
+router.get('/:id/files', auth, async (req, res) => {
   try {
     const server = await Server.findOne({ _id: req.params.id, owner: req.user._id });
-    if (!server) return res.status(404).json({ error: 'NOT_FOUND' });
-
-    const files = await FileData.find({ serverId: server._id }).select('filePath size mimeType uploadedAt -data');
-
-    // Build tree structure
-    const tree = buildTree(files.map(f => ({ path: f.filePath, size: f.size, mimeType: f.mimeType, uploadedAt: f.uploadedAt, _id: f._id })));
-
-    res.json({ tree, totalSize: server.totalSize });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
-});
-
-function buildTree(files) {
-  const root = { name: '/', type: 'folder', children: [], path: '' };
-  for (const file of files) {
-    const parts = file.path.split('/').filter(Boolean);
-    let current = root;
-    for (let i = 0; i < parts.length - 1; i++) {
-      let folder = current.children.find(c => c.name === parts[i] && c.type === 'folder');
-      if (!folder) {
-        folder = { name: parts[i], type: 'folder', children: [], path: parts.slice(0, i + 1).join('/') };
-        current.children.push(folder);
-      }
-      current = folder;
-    }
-    const fname = parts[parts.length - 1];
-    current.children.push({
-      name: fname,
-      type: 'file',
-      path: file.path,
-      size: file.size,
-      mimeType: file.mimeType,
-      uploadedAt: file.uploadedAt,
-      _id: file._id
+    if (!server) return res.json({ ok: false, msg: 'Server tidak ditemukan.' });
+    const files = await File.find({ serverId: server._id }).select('filePath mimeType size createdAt').lean();
+    const base = process.env.BASE_URL || 'https://rayapp.vercel.app';
+    res.json({ ok: true,
+      server: { id: server._id, name: server.name, url: `${base}/s/${server.name}/`, totalSize: server.totalSize, totalRequests: server.totalRequests, lastRequestAt: server.lastRequestAt },
+      files
     });
-  }
-  return root;
-}
+  } catch (_) { res.json({ ok: false, msg: 'Gagal memuat.' }); }
+});
 
 module.exports = router;
