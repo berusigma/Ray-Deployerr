@@ -2,30 +2,21 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>404 — Ray App</title>
-<link rel="stylesheet" href="/assets/css/style.css">
-<style>
-.e404 { min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:20px;position:relative;overflow:hidden; }
-.e404-bg { position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 60%,rgba(14,165,233,.1) 0%,transparent 70%); }
-.e404-num { font-size:clamp(5rem,20vw,10rem);font-weight:900;line-height:1;background:linear-gradient(135deg,rgba(14,165,233,.3),rgba(6,182,212,.5));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;position:relative; }
-.wave-anim { position:absolute;bottom:0;left:0;right:0;height:120px; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<div class="e404">
-  <div class="e404-bg"></div>
-  <svg class="wave-anim" viewBox="0 0 1440 120" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,40 1440,60 L1440,120 L0,120 Z" fill="rgba(10,30,53,0.5)"/>
-  </svg>
-  <div class="e404-num" style="position:relative">404</div>
-  <h1 style="font-size:1.5rem;font-weight:800">Halaman Tidak Ditemukan</h1>
-  <p style="color:var(--muted);max-width:360px">Halaman yang kamu cari tidak ada, atau sudah dihapus dari lautan digital ini.</p>
-  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <a href="/" class="btn btn-primary">Kembali ke Beranda</a>
-    <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
-  </div>
+<body style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:20px;background:var(--bg)">
+<div style="font-size:6rem;font-weight:900;line-height:1;color:var(--primary);opacity:.15">404</div>
+<h1 style="font-size:1.5rem;margin-top:-40px">Halaman Tidak Ditemukan</h1>
+<p style="color:var(--muted);max-width:340px;font-size:.9rem">Halaman yang kamu cari tidak ada atau sudah dipindahkan.</p>
+<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+  <a href="/" class="btn btn-primary">Kembali ke Beranda</a>
+  <a href="/dashboard" class="btn btn-ghost">Dashboard</a>
 </div>
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 </body>
 </html>
