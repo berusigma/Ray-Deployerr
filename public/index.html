@@ -2,220 +2,163 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Ray App - Hosting HTML, CSS, JavaScript gratis. Deploy website kamu dalam hitungan detik.">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Ray App — Hosting HTML, CSS, JavaScript gratis. Deploy website kamu dalam detik.">
 <title>Ray App — Free Web Hosting</title>
-<link rel="stylesheet" href="/assets/css/style.css">
-<style>
-.section-title { font-size: 1.8rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
-.section-sub { text-align: center; color: var(--muted); font-size: .95rem; margin-bottom: 36px; }
-.pricing-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 30px;
-  text-align: center;
-  max-width: 380px;
-  margin: 0 auto;
-}
-.pricing-price { font-size: 3rem; font-weight: 900; color: var(--wave); }
-.pricing-price sup { font-size: 1.2rem; vertical-align: super; }
-.pricing-list { list-style: none; margin: 20px 0; display: flex; flex-direction: column; gap: 10px; }
-.pricing-list li { display: flex; align-items: center; gap: 10px; font-size: .88rem; color: var(--muted); }
-.pricing-list li::before { content: '✓'; color: var(--success); font-weight: 700; flex-shrink: 0; }
-.how-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
-.step-num { font-size: 2.5rem; font-weight: 900; color: rgba(14,165,233,.3); line-height: 1; margin-bottom: 10px; }
-.step-title { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
-.step-desc { font-size: .82rem; color: var(--muted); }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<nav class="navbar" id="navbar"></nav>
-<div id="toast-container"></div>
+<nav class="nav" id="nav"></nav>
+<div id="toasts"></div>
 
 <!-- HERO -->
-<div class="hero">
-  <div class="hero-bg"></div>
-  <svg class="wave-svg" viewBox="0 0 1440 180" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M0,80 C240,140 480,20 720,80 C960,140 1200,20 1440,80 L1440,180 L0,180 Z" fill="rgba(10,30,53,0.8)"/>
-    <path d="M0,110 C360,50 720,160 1080,100 C1260,70 1380,130 1440,110 L1440,180 L0,180 Z" fill="rgba(7,20,40,0.6)"/>
-  </svg>
-  <div class="hero-content">
-    <div class="hero-badge">~~ Gratis Selamanya ~~</div>
-    <h1 class="hero-title">Deploy Website<br>Dalam Detik</h1>
-    <p class="hero-sub">
-      Platform hosting gratis untuk HTML, CSS &amp; JavaScript.<br>
-      Upload file, dapat URL instan, bagikan ke dunia.
-    </p>
-    <div class="hero-btns">
-      <a href="/register" class="btn btn-primary btn-lg">Mulai Gratis</a>
-      <a href="#cara-kerja" class="btn btn-ghost btn-lg">Cara Kerja</a>
+<div class="page" style="padding-top:0">
+  <div class="hero" style="border-bottom:1.5px solid var(--border)">
+    <div class="hero-inner">
+      <div class="hero-badge">Gratis Selamanya · Tanpa Kartu Kredit</div>
+      <h1 class="hero-title">Host website kamu<br><span>dalam hitungan detik</span></h1>
+      <p class="hero-sub">Upload file HTML, CSS, dan JavaScript. Dapat URL sendiri langsung bisa diakses siapa saja. Gratis tanpa batas waktu.</p>
+      <div class="hero-btns">
+        <a href="/register" class="btn btn-primary btn-lg">Mulai Gratis</a>
+        <a href="#features" class="btn btn-ghost btn-lg">Lihat Fitur</a>
+      </div>
     </div>
   </div>
+
+  <!-- URL Demo -->
+  <div style="background:var(--surface);border-bottom:1.5px solid var(--border);padding:16px 20px">
+    <div class="container" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center">
+      <span style="font-size:.85rem;color:var(--muted)">Website kamu akan tersedia di:</span>
+      <code style="background:var(--bg);border:1.5px solid var(--border);padding:6px 14px;border-radius:8px;font-size:.85rem;color:var(--primary)">rayapp.vercel.app/s/<strong>namakamu</strong>/</code>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <div class="container">
+      <div style="text-align:center;margin-bottom:36px">
+        <h2 style="margin-bottom:8px">Semua yang kamu butuhkan</h2>
+        <p style="color:var(--muted);font-size:.95rem">Fitur lengkap, tanpa biaya, tanpa iklan.</p>
+      </div>
+      <div class="features">
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+          <h3>Upload & Deploy Instan</h3>
+          <p>Drag &amp; drop file HTML kamu. Website langsung online dengan URL unik milikmu.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <h3>File Manager</h3>
+          <p>Kelola file layaknya cPanel. Upload, rename, hapus, buat folder, edit langsung di browser.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+          <h3>Editor Online</h3>
+          <p>Edit HTML, CSS, JS langsung di browser. Simpan dan lihat perubahannya instan.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></div>
+          <h3>Auto Extract ZIP</h3>
+          <p>Upload file .zip langsung diekstrak otomatis. Deploy banyak file sekaligus tanpa ribet.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <h3>Monitor Traffic</h3>
+          <p>Pantau total request dan kapan terakhir ada pengunjung di setiap website kamu.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <h3>Aman & Terlindungi</h3>
+          <p>Anti XSS, rate limiting, blokir IP, dan captcha emoji anti-bot bawaan.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" style="background:var(--surface);border-top:1.5px solid var(--border);border-bottom:1.5px solid var(--border)">
+    <div class="container">
+      <div style="text-align:center;margin-bottom:36px">
+        <h2 style="margin-bottom:8px">Cara Kerja</h2>
+        <p style="color:var(--muted);font-size:.95rem">3 langkah mudah.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px">
+        <div style="text-align:center;padding:24px">
+          <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-l);border:1.5px solid var(--primary-m);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.3rem;font-weight:900;color:var(--primary)">1</div>
+          <h3 style="margin-bottom:8px">Daftar Gratis</h3>
+          <p style="font-size:.83rem;color:var(--muted)">Buat akun dengan username & password. Verifikasi emoji anti-bot untuk keamanan.</p>
+        </div>
+        <div style="text-align:center;padding:24px">
+          <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-l);border:1.5px solid var(--primary-m);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.3rem;font-weight:900;color:var(--primary)">2</div>
+          <h3 style="margin-bottom:8px">Buat Server</h3>
+          <p style="font-size:.83rem;color:var(--muted)">Pilih nama folder unik. URL websitemu otomatis terbentuk. Maksimal 4 server per akun.</p>
+        </div>
+        <div style="text-align:center;padding:24px">
+          <div style="width:52px;height:52px;border-radius:14px;background:var(--primary-l);border:1.5px solid var(--primary-m);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:1.3rem;font-weight:900;color:var(--primary)">3</div>
+          <h3 style="margin-bottom:8px">Upload & Online</h3>
+          <p style="font-size:.83rem;color:var(--muted)">Upload index.html dan file lain. Website langsung bisa diakses siapa saja di seluruh dunia.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIMITS -->
+  <section class="section">
+    <div class="container">
+      <div style="text-align:center;margin-bottom:32px">
+        <h2 style="margin-bottom:8px">Plan Gratis</h2>
+        <p style="color:var(--muted)">Semua fitur tersedia tanpa biaya.</p>
+      </div>
+      <div style="max-width:440px;margin:0 auto">
+        <div class="card" style="padding:28px">
+          <div style="font-size:2.5rem;font-weight:900;color:var(--text);margin-bottom:4px">Rp 0</div>
+          <div style="color:var(--muted);font-size:.85rem;margin-bottom:20px">Selamanya gratis</div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+            ${[
+              '4 server / website per akun',
+              '2x buat server per hari',
+              '10 MB per file upload',
+              '50 MB total storage per server',
+              'Auto extract ZIP',
+              'File Manager & Editor online',
+              'Download semua file sebagai ZIP',
+              'Monitor traffic & request',
+              'URL website sendiri',
+            ].map(t => `<div style="display:flex;align-items:center;gap:10px;font-size:.875rem">
+              <div style="width:18px;height:18px;border-radius:50%;background:var(--success-l);border:1.5px solid #bbf7d0;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--success);font-size:.65rem;font-weight:700">✓</div>
+              <span>${t}</span>
+            </div>`).join('')}
+          </div>
+          <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px">Mulai Sekarang</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div style="font-weight:700;color:var(--text);margin-bottom:6px">Ray App</div>
+    <div>Free HTML/CSS/JS Hosting &nbsp;·&nbsp; Dibuat dengan sepenuh hati</div>
+    <div style="margin-top:10px;display:flex;gap:16px;justify-content:center;font-size:.8rem">
+      <a href="/login">Masuk</a>
+      <a href="/register">Daftar</a>
+    </div>
+    <div style="margin-top:12px;font-size:.72rem;opacity:.6">&copy; 2025 Ray App. All rights reserved.</div>
+  </footer>
 </div>
 
-<!-- STATS -->
-<section class="section" style="background:var(--surface)">
-  <div class="container">
-    <div class="stats-row" id="public-stats">
-      <div class="stat-card">
-        <div class="stat-label">Website Aktif</div>
-        <div class="stat-value" id="stat-servers">—</div>
-        <div class="stat-sub">Dihosting saat ini</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Pengguna</div>
-        <div class="stat-value" id="stat-users">—</div>
-        <div class="stat-sub">Sudah daftar</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">File Dihosting</div>
-        <div class="stat-value" id="stat-files">—</div>
-        <div class="stat-sub">Total file</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Uptime</div>
-        <div class="stat-value">99%</div>
-        <div class="stat-sub">Tersedia 24/7</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FITUR -->
-<section class="section">
-  <div class="container">
-    <h2 class="section-title">Semua yang Kamu Butuhkan</h2>
-    <p class="section-sub">Fitur lengkap, tanpa biaya.</p>
-    <div class="features">
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#9729;</div>
-        <div class="feature-title">Deploy Instan</div>
-        <div class="feature-desc">Upload file dan website langsung online. Dapat URL sendiri format rayapp.vercel.app/s/namakamu.</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#128190;</div>
-        <div class="feature-title">File Manager</div>
-        <div class="feature-desc">Kelola file layaknya cPanel — upload, rename, hapus, buat folder, edit langsung di browser.</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#128230;</div>
-        <div class="feature-title">Auto Unzip</div>
-        <div class="feature-desc">Upload file .zip langsung diekstrak otomatis. Hemat waktu, deploy sekaligus banyak file.</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#128202;</div>
-        <div class="feature-title">Monitor Traffic</div>
-        <div class="feature-desc">Lihat total request dan kapan terakhir ada pengunjung di setiap server kamu.</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#128274;</div>
-        <div class="feature-title">Anti-Abuse</div>
-        <div class="feature-desc">Sistem deteksi otomatis. Server tidak aktif 7 hari dihapus agar platform tetap bersih.</div>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon-wrap">&#128187;</div>
-        <div class="feature-title">Editor Online</div>
-        <div class="feature-desc">Edit HTML, CSS, JS langsung dari browser tanpa perlu download dulu.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CARA KERJA -->
-<section class="section" id="cara-kerja" style="background:var(--surface)">
-  <div class="container">
-    <h2 class="section-title">Cara Kerja</h2>
-    <p class="section-sub">3 langkah mudah untuk website online.</p>
-    <div class="how-steps">
-      <div class="card">
-        <div class="step-num">01</div>
-        <div class="step-title">Daftar Akun</div>
-        <div class="step-desc">Daftar gratis dengan username dan password. Verifikasi emoji anti-bot untuk keamanan ekstra.</div>
-      </div>
-      <div class="card">
-        <div class="step-num">02</div>
-        <div class="step-title">Buat Server</div>
-        <div class="step-desc">Pilih nama folder unik. URL website kamu otomatis terbentuk. Maksimal 4 server per akun.</div>
-      </div>
-      <div class="card">
-        <div class="step-num">03</div>
-        <div class="step-title">Upload & Online</div>
-        <div class="step-desc">Upload index.html dan file lainnya via file manager. Website langsung bisa diakses siapa saja.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PRICING -->
-<section class="section">
-  <div class="container">
-    <h2 class="section-title">Gratis Selamanya</h2>
-    <p class="section-sub">Tidak ada kartu kredit. Tidak ada biaya tersembunyi.</p>
-    <div class="pricing-card">
-      <div style="font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Plan Gratis</div>
-      <div class="pricing-price"><sup></sup>Rp 0</div>
-      <div style="color:var(--muted);font-size:.82rem;margin-top:4px">Selamanya</div>
-      <ul class="pricing-list">
-        <li>Hingga 4 server / website</li>
-        <li>10 MB per file upload</li>
-        <li>50 MB total storage per server</li>
-        <li>Auto extract ZIP</li>
-        <li>File Manager lengkap</li>
-        <li>Editor online</li>
-        <li>Download semua file sebagai ZIP</li>
-        <li>URL website sendiri</li>
-        <li>Monitor traffic & request</li>
-      </ul>
-      <a href="/register" class="btn btn-primary" style="width:100%;justify-content:center">Daftar Sekarang</a>
-    </div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="section" style="background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(6,182,212,.06));border-top:1px solid var(--border)">
-  <div class="container" style="text-align:center">
-    <h2 style="font-size:1.8rem;font-weight:800;margin-bottom:12px">Siap Deploy Website Pertamamu?</h2>
-    <p style="color:var(--muted);margin-bottom:28px">Bergabung dengan ribuan developer yang hosting gratis di Ray App.</p>
-    <a href="/register" class="btn btn-primary btn-lg">Mulai Gratis Sekarang</a>
-  </div>
-</section>
-
-<footer>
-  <div style="font-weight:700;color:var(--wave);margin-bottom:8px">~ Ray App ~</div>
-  <div>Free HTML/CSS/JS Hosting &nbsp;|&nbsp; Dibuat dengan semangat laut</div>
-  <div style="margin-top:8px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-    <a href="/login">Masuk</a>
-    <a href="/register">Daftar</a>
-    <a href="#cara-kerja">Cara Kerja</a>
-  </div>
-  <div style="margin-top:16px;opacity:.5;font-size:.75rem">&copy; 2025 Ray App. All rights reserved.</div>
-</footer>
-
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 <script>
-renderNavbar();
-
-// Load public stats
-async function loadStats() {
-  try {
-    const res = await fetch('/api/admin/stats');
-    // Stats endpoint requires admin - we'll show placeholder
-  } catch {}
-  // Animate numbers on scroll
-  document.getElementById('stat-servers').textContent = '—';
-  document.getElementById('stat-users').textContent = '—';
-  document.getElementById('stat-files').textContent = '—';
+buildNav('home');
+if (Store.token()) {
+  document.querySelector('.hero-btns').innerHTML = `<a href="/dashboard" class="btn btn-primary btn-lg">Ke Dashboard</a>`;
 }
-loadStats();
-
-// Smooth scroll
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', e => {
-    e.preventDefault();
-    document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
-  });
+document.querySelector('a[href="#features"]')?.addEventListener('click', e => {
+  e.preventDefault();
+  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
 });
 </script>
 </body>
