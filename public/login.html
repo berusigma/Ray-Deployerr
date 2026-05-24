@@ -2,90 +2,93 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Masuk — Ray App</title>
-<link rel="stylesheet" href="/assets/css/style.css">
-<style>
-.auth-wrap { min-height:100vh;display:flex;align-items:center;justify-content:center;padding:80px 16px 40px; }
-.auth-box { background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px 32px;width:100%;max-width:400px; }
-.auth-logo { text-align:center;margin-bottom:28px; }
-.auth-logo .logo-icon { width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--glow),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin:0 auto 12px; }
-.form-stack { display:flex;flex-direction:column;gap:16px; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<nav class="navbar" id="navbar"></nav>
-<div id="toast-container"></div>
+<nav class="nav" id="nav"></nav>
+<div id="toasts"></div>
 
-<div class="auth-wrap">
+<div class="auth-page">
   <div class="auth-box">
     <div class="auth-logo">
-      <div class="logo-icon">~</div>
-      <h1 style="font-size:1.4rem;font-weight:800;color:var(--wave)">Selamat Datang</h1>
-      <p style="font-size:.82rem;color:var(--muted);margin-top:4px">Masuk ke Ray App</p>
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2 L2 7 L12 12 L22 7 Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 17 L12 22 L22 17" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12 L12 17 L22 12" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <h2 style="font-size:1.25rem;margin-top:8px">Masuk ke Ray App</h2>
+      <p style="font-size:.82rem;color:var(--muted);margin-top:4px">Selamat datang kembali!</p>
     </div>
 
-    <div class="form-stack">
-      <div class="input-group">
+    <div id="err-box" style="display:none"></div>
+
+    <div class="auth-form">
+      <div class="field">
         <label for="username">Username</label>
-        <input type="text" id="username" placeholder="Username kamu" autocomplete="username" autofocus>
+        <input class="input" type="text" id="username" placeholder="Username kamu" autocomplete="username" autofocus spellcheck="false">
       </div>
-      <div class="input-group">
+
+      <div class="field">
         <label for="password">Password</label>
         <div style="position:relative">
-          <input type="password" id="password" placeholder="Password kamu" autocomplete="current-password" style="padding-right:44px">
-          <button id="toggle-pw" type="button" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:.85rem" title="Tampilkan password">&#128065;</button>
+          <input class="input" type="password" id="password" placeholder="Password kamu" autocomplete="current-password" style="padding-right:42px">
+          <button type="button" id="eye" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem">&#128065;</button>
         </div>
       </div>
 
-      <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;padding:13px">
-        Masuk
-      </button>
+      <button class="btn btn-primary" id="btn-login" style="width:100%;padding:12px;font-size:.95rem">Masuk</button>
 
-      <div style="text-align:center;font-size:.85rem;color:var(--muted)">
+      <p style="text-align:center;font-size:.85rem;color:var(--muted)">
         Belum punya akun? <a href="/register">Daftar gratis</a>
-      </div>
+      </p>
     </div>
   </div>
 </div>
 
-<script src="/assets/js/utils.js"></script>
+<script src="/app.js"></script>
 <script>
-renderNavbar('login');
-if (getToken()) window.location.href = '/dashboard';
+buildNav('login');
+if (Store.token()) location.href = '/dashboard';
 
-document.getElementById('toggle-pw').addEventListener('click', function() {
+document.getElementById('eye').addEventListener('click', function() {
   const pw = document.getElementById('password');
   pw.type = pw.type === 'password' ? 'text' : 'password';
-  this.style.color = pw.type === 'text' ? 'var(--accent)' : 'var(--muted)';
+  this.style.color = pw.type === 'text' ? 'var(--primary)' : 'var(--muted)';
 });
 
+function showErr(msg) {
+  const el = document.getElementById('err-box');
+  el.className = 'alert alert-red';
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
 async function doLogin() {
-  const username = document.getElementById('username').value.trim();
+  document.getElementById('err-box').style.display = 'none';
+  const username = document.getElementById('username').value.trim().toLowerCase();
   const password = document.getElementById('password').value;
-  if (!username || !password) return toast('Username dan password wajib diisi.', 'error');
+  if (!username || !password) return showErr('Isi username dan password.');
 
   const btn = document.getElementById('btn-login');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Masuk...';
 
-  const r = await apiFetch('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ username, password })
-  });
+  const data = await api('/auth/login', { method: 'POST', body: { username, password } });
 
   btn.disabled = false;
   btn.textContent = 'Masuk';
 
-  if (!r) return;
-  if (r.ok) {
-    setToken(r.data.token);
-    setUser({ username: r.data.username, role: r.data.role });
-    toast('Berhasil masuk!', 'success');
-    const redirect = new URLSearchParams(window.location.search).get('redirect') || '/dashboard';
-    setTimeout(() => window.location.href = redirect, 500);
+  if (!data) return;
+  if (data.ok) {
+    Store.setAuth(data.token, { username: data.username, role: data.role });
+    toast('Berhasil masuk!', 'ok');
+    const rd = new URLSearchParams(location.search).get('redirect') || '/dashboard';
+    setTimeout(() => location.href = rd, 400);
   } else {
-    toast(r.data.message || 'Login gagal.', 'error');
+    showErr(data.msg || 'Login gagal.');
     document.getElementById('password').value = '';
   }
 }
