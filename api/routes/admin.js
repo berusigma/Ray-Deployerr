@@ -1,202 +1,139 @@
-const express = require('express');
-const router = express.Router();
-const { User, Server, Activity, BlockedIP, FileData } = require('../models');
-const { requireAdmin, logActivity } = require('../middleware');
+const router = require('express').Router();
+const { User, Server, File, Activity, BlockedIP } = require('../models');
+const { adminAuth, log, getIP } = require('../middleware');
 
-// ─── STATS ────────────────────────────────────────────────
-router.get('/stats', requireAdmin, async (req, res) => {
+// GET /api/admin/stats
+router.get('/stats', adminAuth, async (req, res) => {
   try {
-    const [totalUsers, totalServers, totalFiles, blockedIPs, recentActivity] = await Promise.all([
-      User.countDocuments(),
-      Server.countDocuments(),
-      FileData.countDocuments(),
-      BlockedIP.countDocuments(),
-      Activity.find().sort({ timestamp: -1 }).limit(20)
+    const [users, servers, files, ips] = await Promise.all([
+      User.countDocuments(), Server.countDocuments(), File.countDocuments(), BlockedIP.countDocuments()
     ]);
-
-    // Total storage
-    const storageAgg = await FileData.aggregate([{ $group: { _id: null, total: { $sum: '$size' } } }]);
-    const totalStorage = storageAgg[0]?.total || 0;
-
-    res.json({ totalUsers, totalServers, totalFiles, blockedIPs, totalStorage, recentActivity });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const agg = await File.aggregate([{ $group: { _id: null, total: { $sum: '$size' } } }]);
+    const storage = agg[0]?.total || 0;
+    const activity = await Activity.find().sort({ createdAt: -1 }).limit(30).lean();
+    res.json({ ok: true, stats: { users, servers, files, ips, storage }, activity });
+  } catch (_) { res.json({ ok: false, msg: 'Gagal.' }); }
 });
 
-// ─── LIST USERS ───────────────────────────────────────────
-router.get('/users', requireAdmin, async (req, res) => {
+// GET /api/admin/users
+router.get('/users', adminAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = 20;
-    const search = req.query.search || '';
-
-    const query = search ? { username: { $regex: search, $options: 'i' } } : {};
-    const users = await User.find(query).select('-password').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
-    const total = await User.countDocuments(query);
-
-    res.json({ users, total, page, pages: Math.ceil(total / limit) });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const q    = req.query.q || '';
+    const filter = q ? { username: { $regex: q, $options: 'i' } } : {};
+    const [users, total] = await Promise.all([
+      User.find(filter).select('-password').sort({ createdAt: -1 }).skip((page-1)*20).limit(20).lean(),
+      User.countDocuments(filter)
+    ]);
+    res.json({ ok: true, users, total, pages: Math.ceil(total/20), page });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── LIST SERVERS ─────────────────────────────────────────
-router.get('/servers', requireAdmin, async (req, res) => {
+// GET /api/admin/servers
+router.get('/servers', adminAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = 20;
-    const search = req.query.search || '';
-
-    const query = search ? { $or: [{ name: { $regex: search, $options: 'i' } }, { ownerUsername: { $regex: search, $options: 'i' } }] } : {};
-    const servers = await Server.find(query).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit);
-    const total = await Server.countDocuments(query);
-
-    const baseUrl = process.env.BASE_URL || 'https://rayapp.vercel.app';
-    const serversWithUrl = servers.map(s => ({ ...s.toObject(), url: `${baseUrl}/s/${s.name}/` }));
-
-    res.json({ servers: serversWithUrl, total, page, pages: Math.ceil(total / limit) });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const q    = req.query.q || '';
+    const filter = q ? { $or: [{ name: { $regex: q, $options: 'i' } }, { ownerUsername: { $regex: q, $options: 'i' } }] } : {};
+    const [servers, total] = await Promise.all([
+      Server.find(filter).sort({ createdAt: -1 }).skip((page-1)*20).limit(20).lean(),
+      Server.countDocuments(filter)
+    ]);
+    const base = process.env.BASE_URL || 'https://rayapp.vercel.app';
+    res.json({ ok: true, servers: servers.map(s => ({ ...s, url: `${base}/s/${s.name}/` })), total, pages: Math.ceil(total/20), page });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── GET SERVER FILES (admin) ─────────────────────────────
-router.get('/servers/:id/files', requireAdmin, async (req, res) => {
+// GET /api/admin/server/:id/files
+router.get('/server/:id/files', adminAuth, async (req, res) => {
   try {
-    const server = await Server.findById(req.params.id);
-    if (!server) return res.status(404).json({ error: 'NOT_FOUND' });
-    const files = await FileData.find({ serverId: server._id }).select('filePath size mimeType uploadedAt -data');
-    res.json({ server, files });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const server = await Server.findById(req.params.id).lean();
+    if (!server) return res.json({ ok: false, msg: 'Tidak ditemukan.' });
+    const files = await File.find({ serverId: server._id }).select('filePath size mimeType createdAt').lean();
+    res.json({ ok: true, server, files });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── DELETE SERVER (admin) ────────────────────────────────
-router.delete('/servers/:id', requireAdmin, async (req, res) => {
+// DELETE /api/admin/server/:id
+router.delete('/server/:id', adminAuth, async (req, res) => {
   try {
-    const server = await Server.findById(req.params.id);
-    if (!server) return res.status(404).json({ error: 'NOT_FOUND' });
-
-    await FileData.deleteMany({ serverId: server._id });
-    await User.updateOne({ _id: server.owner }, { $inc: { serverCount: -1 } });
-    await Server.deleteOne({ _id: server._id });
-
-    await logActivity(req.user._id, req.user.username, 'ADMIN_DELETE_SERVER', server.name, req);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const s = await Server.findById(req.params.id);
+    if (!s) return res.json({ ok: false, msg: 'Tidak ditemukan.' });
+    await File.deleteMany({ serverId: s._id });
+    await User.updateOne({ _id: s.owner }, { $inc: { serverCount: -1 } });
+    await Server.deleteOne({ _id: s._id });
+    await log(req.user.username, 'ADMIN_DEL_SERVER', s.name, getIP(req));
+    res.json({ ok: true });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── BLOCK / UNBLOCK USER ─────────────────────────────────
-router.put('/users/:id/block', requireAdmin, async (req, res) => {
+// PUT /api/admin/user/:id/block
+router.put('/user/:id/block', adminAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ error: 'NOT_FOUND' });
-    if (user.role === 'admin') return res.status(400).json({ error: 'CANNOT_BLOCK_ADMIN' });
-
-    user.isBlocked = !user.isBlocked;
-    await user.save();
-
-    await logActivity(req.user._id, req.user.username, user.isBlocked ? 'BLOCK_USER' : 'UNBLOCK_USER', user.username, req);
-    res.json({ success: true, isBlocked: user.isBlocked });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const u = await User.findById(req.params.id);
+    if (!u) return res.json({ ok: false, msg: 'User tidak ditemukan.' });
+    if (u.role === 'admin') return res.json({ ok: false, msg: 'Tidak bisa blokir admin.' });
+    u.isBlocked = !u.isBlocked;
+    await u.save();
+    await log(req.user.username, u.isBlocked ? 'BLOCK_USER' : 'UNBLOCK_USER', u.username, getIP(req));
+    res.json({ ok: true, isBlocked: u.isBlocked });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── DELETE USER ──────────────────────────────────────────
-router.delete('/users/:id', requireAdmin, async (req, res) => {
+// DELETE /api/admin/user/:id
+router.delete('/user/:id', adminAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    if (!user) return res.status(404).json({ error: 'NOT_FOUND' });
-    if (user.role === 'admin') return res.status(400).json({ error: 'CANNOT_DELETE_ADMIN' });
-
-    // Delete all servers and files
-    const servers = await Server.find({ owner: user._id });
-    for (const srv of servers) {
-      await FileData.deleteMany({ serverId: srv._id });
-    }
-    await Server.deleteMany({ owner: user._id });
-    await User.deleteOne({ _id: user._id });
-
-    await logActivity(req.user._id, req.user.username, 'ADMIN_DELETE_USER', user.username, req);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const u = await User.findById(req.params.id);
+    if (!u) return res.json({ ok: false, msg: 'User tidak ditemukan.' });
+    if (u.role === 'admin') return res.json({ ok: false, msg: 'Tidak bisa hapus admin.' });
+    const srvs = await Server.find({ owner: u._id });
+    for (const s of srvs) await File.deleteMany({ serverId: s._id });
+    await Server.deleteMany({ owner: u._id });
+    await User.deleteOne({ _id: u._id });
+    await log(req.user.username, 'ADMIN_DEL_USER', u.username, getIP(req));
+    res.json({ ok: true });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── BLOCK IP ─────────────────────────────────────────────
-router.post('/block-ip', requireAdmin, async (req, res) => {
+// POST /api/admin/block-ip
+router.post('/block-ip', adminAuth, async (req, res) => {
   try {
-    const { ip, reason } = req.body;
-    if (!ip) return res.status(400).json({ error: 'MISSING_IP' });
-
-    const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^[a-f0-9:]+$/i;
-    if (!ipRegex.test(ip)) return res.status(400).json({ error: 'INVALID_IP', message: 'Format IP tidak valid.' });
-
-    await BlockedIP.findOneAndUpdate(
-      { ip },
-      { ip, reason: reason || 'Diblokir oleh admin', blockedBy: req.user.username },
-      { upsert: true }
-    );
-
-    await logActivity(req.user._id, req.user.username, 'BLOCK_IP', ip, req);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const { ip, reason } = req.body || {};
+    if (!ip) return res.json({ ok: false, msg: 'IP wajib diisi.' });
+    await BlockedIP.findOneAndUpdate({ ip }, { ip, reason: reason || 'Diblokir admin', blockedBy: req.user.username }, { upsert: true });
+    await log(req.user.username, 'BLOCK_IP', ip, getIP(req));
+    res.json({ ok: true });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── UNBLOCK IP ───────────────────────────────────────────
-router.delete('/block-ip/:ip', requireAdmin, async (req, res) => {
+// DELETE /api/admin/block-ip/:ip
+router.delete('/block-ip/:ip', adminAuth, async (req, res) => {
   try {
     await BlockedIP.deleteOne({ ip: req.params.ip });
-    await logActivity(req.user._id, req.user.username, 'UNBLOCK_IP', req.params.ip, req);
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    res.json({ ok: true });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── LIST BLOCKED IPs ─────────────────────────────────────
-router.get('/blocked-ips', requireAdmin, async (req, res) => {
+// GET /api/admin/blocked-ips
+router.get('/blocked-ips', adminAuth, async (req, res) => {
   try {
-    const ips = await BlockedIP.find().sort({ blockedAt: -1 });
-    res.json({ ips });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const ips = await BlockedIP.find().sort({ createdAt: -1 }).lean();
+    res.json({ ok: true, ips });
+  } catch (_) { res.json({ ok: false }); }
 });
 
-// ─── ACTIVITY LOG ─────────────────────────────────────────
-router.get('/activity', requireAdmin, async (req, res) => {
+// GET /api/admin/activity
+router.get('/activity', adminAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = 50;
-    const filter = req.query.filter || '';
-    const query = filter ? { $or: [{ action: { $regex: filter, $options: 'i' } }, { username: { $regex: filter, $options: 'i' } }] } : {};
-    const logs = await Activity.find(query).sort({ timestamp: -1 }).skip((page - 1) * limit).limit(limit);
-    const total = await Activity.countDocuments(query);
-    res.json({ logs, total, page, pages: Math.ceil(total / limit) });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
-});
-
-// ─── MAKE ADMIN ───────────────────────────────────────────
-router.put('/users/:id/make-admin', requireAdmin, async (req, res) => {
-  try {
-    const { secret } = req.body;
-    if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'WRONG_SECRET' });
-    await User.updateOne({ _id: req.params.id }, { role: 'admin' });
-    res.json({ success: true });
-  } catch (e) {
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  }
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const q = req.query.q || '';
+    const filter = q ? { $or: [{ action: { $regex: q, $options: 'i' } }, { username: { $regex: q, $options: 'i' } }] } : {};
+    const [logs, total] = await Promise.all([
+      Activity.find(filter).sort({ createdAt: -1 }).skip((page-1)*50).limit(50).lean(),
+      Activity.countDocuments(filter)
+    ]);
+    res.json({ ok: true, logs, total, pages: Math.ceil(total/50), page });
+  } catch (_) { res.json({ ok: false }); }
 });
 
 module.exports = router;
